@@ -1,0 +1,28 @@
+name: Deploy Backend to DigitalOcean
+
+on:
+  push:
+    branches:
+      - main # change if your branch is different
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v3
+
+      - name: Deploy to DigitalOcean
+        uses: appleboy/ssh-action@v1.0.0
+        with:
+          host: ${{ secrets.DO_SERVER_IP }}
+          username: ${{ secrets.DO_SERVER_USER }}
+          key: ${{ secrets.DO_SERVER_KEY }}
+          script: |
+            cd /var/www/html/diamondBackend
+            git clone https://github.com/tarunpawar/dilse-diamondBackend.git . || git pull origin main
+            composer install --no-dev --optimize-autoloader || true
+            php artisan migrate --force || true
+            php artisan config:cache || true
+            php artisan route:cache || true
