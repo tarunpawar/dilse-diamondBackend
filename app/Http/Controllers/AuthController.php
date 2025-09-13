@@ -271,9 +271,9 @@ class AuthController extends Controller
             $token = $user->createToken('google-login')->accessToken;
 
             // 🔁 Redirect to your frontend app with the token
-            return redirect("https://thecaratcasa.com/google/callback?token={$token}");
+            return redirect("google/callback?token={$token}");
         } catch (\Exception $e) {
-            return redirect("https://thecaratcasa.com/signin?error=google_login_failed");
+            return redirect("signin?error=google_login_failed");
         }
     }
 }
