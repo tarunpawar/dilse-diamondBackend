@@ -1,28 +1,38 @@
-name: Deploy Backend to DigitalOcean
+name: Deploy Backend
 
 on:
   push:
-    branches:
-      - main # change if your branch is different
+    branches: [main]
 
 jobs:
   deploy:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout repo
+      - name: Checkout
         uses: actions/checkout@v3
 
-      - name: Deploy to DigitalOcean
-        uses: appleboy/ssh-action@v1.0.0
+      - name: Start ssh-agent and add key
+        uses: webfactory/ssh-agent@v0.7.0
         with:
-          host: ${{ secrets.DO_SERVER_IP }}
-          username: ${{ secrets.DO_SERVER_USER }}
-          key: ${{ secrets.DO_SERVER_KEY }}
-          script: |
-            cd /var/www/html/diamondBackend
-            git clone https://github.com/tarunpawar/dilse-diamondBackend.git . || git pull origin main
-            composer install --no-dev --optimize-autoloader || true
-            php artisan migrate --force || true
-            php artisan config:cache || true
-            php artisan route:cache || true
+          ssh-private-key: ${{ secrets.SSH_PRIVATE_KEY }}
+
+      - name: Deploy to server
+        env:
+          SERVER_HOST: ${{ secrets.SERVER_HOST }}
+          SERVER_USER: ${{ secrets.SERVER_USER }}
+          SERVER_PORT: ${{ secrets.SERVER_PORT }}
+        run: |
+          ssh -o StrictHostKeyChecking=no -p $SERVER_PORT $SERVER_USER@$SERVER_HOST "
+            git config --global --add safe.directory /var/www/html/diamondBackend || true
+            cd /var/www/html/diamondBackend || exit 2
+
+            git fetch --all --prune
+            git reset --hard origin/main
+
+            composer install --no-dev --optimize-autoloader
+            php artisan migrate --force
+            php artisan config:clear
+            php artisan cache:clear
+            php artisan route:clear
+          "

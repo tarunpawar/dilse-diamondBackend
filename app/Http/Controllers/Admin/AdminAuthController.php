@@ -58,7 +58,6 @@ class AdminAuthController extends Controller
     {
         return view('admin.dashboard');
     }
-
     public function logout(Request $request)
     {
         Auth::logout();

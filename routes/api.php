@@ -33,16 +33,23 @@ use App\Http\Controllers\Api\CategoryController;
 */
 
 Route::middleware('auth:sanctum')->get('/user', function (Request $request) {
-       return $request->user();
+    return $request->user();
 });
 
 Route::get('/get-all-products', [ProductController::class, 'jewelryData']);
 Route::get('/get-all-engagementData/{slug?}', [ProductController::class, 'engagementData']);
 Route::get('/jewelry', [CategoryController::class, 'jewelryData']);
+Route::get('/engagement', [ShapeController::class, 'engagementData']);
 Route::get('/get-all-styleShapeData', [ShapeController::class, 'styleShapeData']);
 Route::get('/product-by-id/{id}', [ProductController::class, 'showById']);
 Route::get('/engagement-buildproduct/{id}', [ProductController::class, 'showBuildProductById']);
 Route::get('/jewelry-product/{id}', [ProductController::class, 'showRegularProductById']);
+
+// Route::get('/get-all-products/{slug?}', [ProductController::class, 'index']);
+// Route::get('/jewelry', [CategoryController::class, 'jewelryData']);
+// Route::get('/engagement', [ShapeController::class, 'engagementData']);
+// Route::get('/product-by-id/{id}', [ProductController::class, 'showById']);
+
 Route::get('/get-all-diamonds', [DiamondMasterController::class, 'data']);
 Route::post('/contact', [ContactController::class, 'submit']);
 //shape
@@ -86,8 +93,23 @@ Route::middleware('auth:sanctum')->group(function () {
 Route::post('/add-to-cart', [CartController::class, 'store']);
 Route::get('/user-address/{user_id}', [AddressController::class, 'getAddress']);
 Route::post('/store-addresses', [AddressController::class, 'store']);
+// Public route for storing orders
+// Public route for storing orders
 Route::post('/store-order', [OrderController::class, 'store']);
-Route::middleware('auth:sanctum')->get('/get-orders', [OrderController::class, 'index']);
+
+// Protected routes requiring authentication
+Route::middleware('auth:sanctum')->group(function () {
+    // Get all orders for authenticated user
+    Route::get('/get-orders', [OrderController::class, 'index']);
+    
+    // Get specific order by ID
+    Route::get('/get-order/{id}', [OrderController::class, 'show']);
+    
+    // Cancel an order
+    Route::post('/cancel-order/{id}', [OrderController::class, 'cancel']);
+});
+// Route::post('/store-order', [OrderController::class, 'store']);
+// Route::middleware('auth:sanctum')->get('/get-orders', [OrderController::class, 'index']);
 
 Route::post('/paypal/create-order', [PayPalController::class, 'createOrder'])->name('paypal.create');
 Route::get('/paypal/capture', [PayPalController::class, 'captureOrder'])->name('paypal.capture');

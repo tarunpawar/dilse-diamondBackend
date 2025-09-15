@@ -118,7 +118,7 @@
                          <td>${record.dl_name ?? ''}</td>
                          <td><input type="checkbox" ${record.dl_display_in_front == 1 ? 'checked' : ''} class="display_in_front" data-id="${record.dl_id}"></td>
                          <td><input type="number" value="${record.dl_sort_order}" class="sort-order" data-id="${record.dl_id}" style="width: 60px;"></td>
-                         <td>${record.image ? `<img src="{{ asset('storage/labs/${record.image}') }}" width="50">` : ''}</td>
+                         <td>${record.image ? `<img src="{{ url('storage/labs/${record.image}') }}" width="50">` : ''}</td>
                          <td>${record.cert_url ?? ''}</td>
                          <td>${record.date_added ? record.date_added : ''}</td>
                          <td>${record.date_modify ? record.date_modify: ''}</td>
@@ -186,7 +186,7 @@
                 if (data.image) {
                     $('#image_preview').html(`
                         <div class="d-flex align-items-center">
-                            <img src="{{ asset('storage/labs/${data.image}') }}" class="img-thumbnail">
+                            <img src="{{ url('storage/labs/${data.image}') }}" class="img-thumbnail">
                             <button type="button" class="btn btn-danger btn-sm ms-2 remove-existing">Remove</button>
                         </div>
                     `);

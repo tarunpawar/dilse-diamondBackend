@@ -25,7 +25,7 @@ class DiamondLabMasterController extends Controller
             'dl_name' => 'required|string|max:250',
             'dl_display_in_front' => 'nullable|integer',
             'dl_sort_order' => 'nullable|integer',
-            'image' => 'required|image|mimes:jpeg,png,jpg,gif|max:2048',
+            'image' => 'required|image|mimes:jpeg,png,jpg,gif,webp|max:2048',
             'cert_url' => 'nullable|string|max:255',
         ]);
         
@@ -58,7 +58,7 @@ class DiamondLabMasterController extends Controller
             'dl_name' => 'required|string|max:250',
             'dl_display_in_front' => 'nullable|integer',
             'dl_sort_order' => 'nullable|integer',
-            'image' => 'nullable|image|mimes:jpeg,png,jpg,gif|max:2048',
+            'image' => 'nullable|image|mimes:jpeg,png,jpg,gif,webp|max:2048',
             'cert_url' => 'nullable|string|max:255',
             'existing_image' => 'nullable|string'
         ]);

@@ -15,6 +15,7 @@ use Illuminate\Support\Facades\DB;
 
 class ProductController extends Controller
 {
+
     public function jewelryData(Request $request, $slug = null)
     {
         $filters = [
@@ -114,12 +115,9 @@ class ProductController extends Controller
             if (!empty($filters['menucollection'])) {
                 $query->where('product_collection_id', $filters['menucollection']);
             }
-            if (!empty($filters['style']))
-                $query->where('psc_id', $filters['style']);
-            if (!empty($filters['collection']))
-                $query->where('product_collection_id', $filters['collection']);
-            if (!empty($filters['ready_to_ship']) && $filters['ready_to_ship'] === 'true')
-                $query->where('ready_to_ship', 1);
+            if (!empty($filters['style'])) $query->where('psc_id', $filters['style']);
+            if (!empty($filters['collection'])) $query->where('product_collection_id', $filters['collection']);
+            if (!empty($filters['ready_to_ship']) && $filters['ready_to_ship'] === 'true') $query->where('ready_to_ship', 1);
 
             // Always enforce is_build_product = 0
             $query->where('is_build_product', 0);
@@ -161,9 +159,9 @@ class ProductController extends Controller
                 ->groupBy('product_id');
 
             $sortedProductIds = ProductVariation::joinSub($subQuery, 'sorted_prices', function ($join) {
-                $join->on('product_variations.product_id', '=', 'sorted_prices.product_id')
-                    ->on('product_variations.price', '=', 'sorted_prices.target_price');
-            })
+                    $join->on('product_variations.product_id', '=', 'sorted_prices.product_id')
+                        ->on('product_variations.price', '=', 'sorted_prices.target_price');
+                })
                 ->select('product_variations.product_id', 'sorted_prices.target_price')
                 ->orderBy('sorted_prices.target_price', $sortDirection)
                 ->skip(($page - 1) * $perPage)
@@ -175,12 +173,11 @@ class ProductController extends Controller
         $products = Product::with([
             'productcategory' => function ($q) {
                 $q->select('category_id', 'category_name', 'parent_id')->with('parent:category_id,category_name');
-            },
-            'variations.metalColor'
-        ])
-            ->whereIn('products_id', $sortedProductIds)
-            ->orderByRaw('FIELD(products_id, ' . implode(',', $sortedProductIds->toArray()) . ')')
-            ->get();
+            }, 
+            'variations.metalColor'])
+                ->whereIn('products_id', $sortedProductIds)
+                ->orderByRaw('FIELD(products_id, ' . implode(',', $sortedProductIds->toArray()) . ')')
+                ->get();
 
         $validProducts = [];
 
@@ -189,8 +186,7 @@ class ProductController extends Controller
 
             if (!empty($filters['metal_color_id'])) {
                 $hasMatchingMetal = $variations->contains('metal_color_id', $filters['metal_color_id']);
-                if (!$hasMatchingMetal)
-                    continue;
+                if (!$hasMatchingMetal) continue;
             }
 
             if (!empty($filters['price']) && preg_match('/^(\d+)-(\d+)$/', $filters['price'])) {
@@ -198,8 +194,7 @@ class ProductController extends Controller
                 $variations = $variations->filter(fn($v) => $v->price >= $min && $v->price <= $max);
             }
 
-            if ($variations->isEmpty())
-                continue;
+            if ($variations->isEmpty()) continue;
 
             $category = $product->productcategory;
             $parent = $category?->parent;
@@ -253,7 +248,7 @@ class ProductController extends Controller
                     'parent_category_id' => $product->parent_category_id,
                     'psc_id' => $product->psc_id,
                     'is_build' => $product->is_build_product,
-                    'product_collection_id' => $product->product_collection_id,
+                    'product_collection_id'=> $product->product_collection_id,
                 ],
                 'category' => $category ? [
                     'id' => $category->category_id,
@@ -268,7 +263,7 @@ class ProductController extends Controller
         }
 
         return response()->json([
-            'banner_video' => $bannerVideo,
+            'banner_video'=>$bannerVideo,
             'banner_image' => $bannerImage,
             'style_data' => $styleData,
             'collection_data' => $collectionData,
@@ -515,178 +510,7 @@ class ProductController extends Controller
         ]);
     }
 
-    // public function showById($id)
-    // {
-    //     $product = Product::with([
-    //         'productcategory' => function ($query) {
-    //             $query->select('category_id', 'category_name', 'parent_id')
-    //                 ->with('parent:category_id,category_name');
-    //         },
-    //         'variations.metalColor' => function ($query) {
-    //             $query->select('dmt_id', 'dmt_name', 'dmt_tooltip', 'color_code');
-    //         },
-    //         'variations.shape' => function ($query) {
-    //             $query->select('id', 'name', 'image');
-    //         },
-    //     ])->where('products_id', $id)->first();
-
-    //     if (!$product) {
-    //         return response()->json(['message' => 'Product not found'], 404);
-    //     }
-
-    //     $category = $product->productcategory;
-    //     $parent = $category?->parent;
-    //     $variations = $product->variations;
-    //     $isBuild = (int) ($product->is_build_product ?? $product->is_build ?? 0);
-
-    //     // prepare quality lookup once for sorting
-    //     $qualityByMetal = [];
-    //     foreach ($variations as $v) {
-    //         $mid = (string) $v->metal_color_id;
-    //         if (!isset($qualityByMetal[$mid])) {
-    //             $qualityByMetal[$mid] = optional($v->metalColor)->dmt_tooltip;
-    //         }
-    //     }
-
-    //     // formatter kept inline (still a single controller method)
-    //     $format = function ($variation) use ($category, $parent) {
-    //         return [
-    //             'id' => $variation->id,
-    //             'product_id' => $variation->product_id,
-    //             'carat' => $variation->carat,
-    //             'price' => $variation->price,
-    //             'sku' => $variation->sku,
-    //             'shape_id' => $variation->shape_id,
-    //             'metal_color_id' => $variation->metal_color_id,
-    //             'metal_color' => $variation->metalColor ? [
-    //                 'id' => $variation->metalColor->dmt_id,
-    //                 'name' => $variation->metalColor->dmt_name,
-    //                 'quality' => $variation->metalColor->dmt_tooltip,
-    //                 'hex' => $variation->metalColor->color_code ?? null,
-    //             ] : null,
-    //             'shape' => $variation->shape ? [
-    //                 'id' => $variation->shape->id,
-    //                 'name' => $variation->shape->name,
-    //                 'image' => $variation->shape->image ? asset('storage/shapes/' . $variation->shape->image) : null,
-    //             ] : null,
-    //             'weight' => $variation->weight,
-    //             'images' => $variation->images,
-    //             'category' => $category ? [
-    //                 'id' => $category->category_id,
-    //                 'name' => $category->category_name,
-    //                 'parent' => $parent ? [
-    //                     'id' => $parent->category_id,
-    //                     'name' => $parent->category_name
-    //                 ] : null
-    //             ] : null,
-    //         ];
-    //     };
-
-    //     if ($isBuild === 1) {
-    //         // Build type: metal_color_id -> shape_id -> [variations...]
-    //         $groupedByMetal = [];
-
-    //         foreach ($variations as $variation) {
-    //             $metalId = (string) $variation->metal_color_id;
-    //             $shapeId = (string) ($variation->shape_id ?? 0);
-
-    //             $groupedByMetal[$metalId][$shapeId] = $groupedByMetal[$metalId][$shapeId] ?? [];
-    //             $groupedByMetal[$metalId][$shapeId][] = $format($variation);
-    //         }
-
-    //         // sort shapes numerically inside each metal (optional)
-    //         foreach ($groupedByMetal as $metalId => $shapes) {
-    //             $sortedShapeIds = array_keys($shapes);
-    //             sort($sortedShapeIds, SORT_NUMERIC);
-    //             $sortedShapes = [];
-    //             foreach ($sortedShapeIds as $sid) {
-    //                 $sortedShapes[$sid] = $shapes[$sid];
-    //             }
-    //             $groupedByMetal[$metalId] = $sortedShapes;
-    //         }
-
-    //         // sort metals by quality (numbers first)
-    //         $metalIds = array_keys($groupedByMetal);
-    //         usort($metalIds, function ($a, $b) use ($qualityByMetal) {
-    //             $q1 = $qualityByMetal[$a] ?? null;
-    //             $q2 = $qualityByMetal[$b] ?? null;
-
-    //             $n1 = is_numeric($q1);
-    //             $n2 = is_numeric($q2);
-
-    //             if ($n1 && $n2)
-    //                 return ((int) $q1) <=> ((int) $q2);
-    //             if ($n1 && !$n2)
-    //                 return -1;
-    //             if (!$n1 && $n2)
-    //                 return 1;
-    //             return (string) $q1 <=> (string) $q2;
-    //         });
-
-    //         $sorted = [];
-    //         foreach ($metalIds as $idKey) {
-    //             $sorted[$idKey] = $groupedByMetal[$idKey];
-    //         }
-    //         $groupedByMetal = $sorted;
-
-    //     } else {
-    //         // Default: metal_color_id -> [variations...]
-    //         $groupedByMetal = $variations
-    //             ->groupBy('metal_color_id')
-    //             ->map(function ($group) use ($format) {
-    //                 return $group->map($format)->values();
-    //             })
-    //             ->filter(fn($group) => $group->isNotEmpty())
-    //             ->toArray();
-
-    //         // sort metals by quality (numbers first)
-    //         $metalIds = array_keys($groupedByMetal);
-    //         usort($metalIds, function ($a, $b) use ($qualityByMetal) {
-    //             $q1 = $qualityByMetal[$a] ?? null;
-    //             $q2 = $qualityByMetal[$b] ?? null;
-
-    //             $n1 = is_numeric($q1);
-    //             $n2 = is_numeric($q2);
-
-    //             if ($n1 && $n2)
-    //                 return ((int) $q1) <=> ((int) $q2);
-    //             if ($n1 && !$n2)
-    //                 return -1;
-    //             if (!$n1 && $n2)
-    //                 return 1;
-    //             return (string) $q1 <=> (string) $q2;
-    //         });
-
-    //         $sorted = [];
-    //         foreach ($metalIds as $idKey) {
-    //             $sorted[$idKey] = $groupedByMetal[$idKey];
-    //         }
-    //         $groupedByMetal = $sorted;
-    //     }
-
-    //     return response()->json([
-    //         'id' => $product->products_id,
-    //         'product' => [
-    //             'id' => $product->products_id,
-    //             'name' => $product->products_name,
-    //             'master_sku' => $product->master_sku,
-    //             'description' => $product->products_description,
-    //             'ready_to_ship' => $product->ready_to_ship,
-    //             'is_build' => $isBuild,
-    //         ],
-    //         'category' => $category ? [
-    //             'id' => $category->category_id,
-    //             'name' => $category->category_name,
-    //             'parent' => $parent ? [
-    //                 'id' => $parent->category_id,
-    //                 'name' => $parent->category_name,
-    //             ] : null
-    //         ] : null,
-    //         'metal_variations' => $groupedByMetal,
-    //     ]);
-    // }
-
-    public function showBuildProductById($id)
+    public function showBuildProductById ($id)
     {
         $product = Product::with([
             'productcategory' => function ($query) {
@@ -705,7 +529,7 @@ class ProductController extends Controller
             return response()->json(['message' => 'Product not found'], 404);
         }
 
-        $isBuild = (int) ($product->is_build_product ?? $product->is_build ?? 0);
+        $isBuild = (int)($product->is_build_product ?? $product->is_build ?? 0);
         if ($isBuild !== 1) {
             return response()->json(['message' => 'Product is not a build type'], 400);
         }
@@ -716,7 +540,7 @@ class ProductController extends Controller
 
         $qualityByMetal = [];
         foreach ($variations as $v) {
-            $mid = (string) $v->metal_color_id;
+            $mid = (string)$v->metal_color_id;
             if (!isset($qualityByMetal[$mid])) {
                 $qualityByMetal[$mid] = optional($v->metalColor)->dmt_tooltip;
             }
@@ -728,6 +552,7 @@ class ProductController extends Controller
                 'product_id' => $variation->product_id,
                 'carat' => $variation->carat,
                 'price' => $variation->price,
+                'original_price' => $variation->regular_price,
                 'sku' => $variation->sku,
                 'shape_id' => $variation->shape_id,
                 'metal_color_id' => $variation->metal_color_id,
@@ -744,6 +569,7 @@ class ProductController extends Controller
                 ] : null,
                 'weight' => $variation->weight,
                 'images' => $variation->images,
+                'video' => $variation->video ? asset('storage/variation_videos/' . $variation->video): null,
                 'category' => $category ? [
                     'id' => $category->category_id,
                     'name' => $category->category_name,
@@ -757,8 +583,8 @@ class ProductController extends Controller
 
         $groupedByMetal = [];
         foreach ($variations as $variation) {
-            $metalId = (string) $variation->metal_color_id;
-            $shapeId = (string) ($variation->shape_id ?? 0);
+            $metalId = (string)$variation->metal_color_id;
+            $shapeId = (string)($variation->shape_id ?? 0);
             $groupedByMetal[$metalId][$shapeId][] = $format($variation);
         }
 
@@ -782,13 +608,11 @@ class ProductController extends Controller
             $hasNumB = $numB !== null;
 
             if ($hasNumA && $hasNumB) {
-                return (int) $numA <=> (int) $numB;
+                return (int)$numA <=> (int)$numB;
             }
 
-            if ($hasNumA)
-                return -1; // numeric first
-            if ($hasNumB)
-                return 1;
+            if ($hasNumA) return -1; // numeric first
+            if ($hasNumB) return 1;
 
             // both non-numeric, compare as strings
             return strcasecmp($qa, $qb);
@@ -841,7 +665,7 @@ class ProductController extends Controller
             return response()->json(['message' => 'Product not found'], 404);
         }
 
-        $isBuild = (int) ($product->is_build_product ?? $product->is_build ?? 0);
+        $isBuild = (int)($product->is_build_product ?? $product->is_build ?? 0);
         if ($isBuild !== 0) {
             return response()->json(['message' => 'Product is not a regular type'], 400);
         }
@@ -852,7 +676,7 @@ class ProductController extends Controller
 
         $qualityByMetal = [];
         foreach ($variations as $v) {
-            $mid = (string) $v->metal_color_id;
+            $mid = (string)$v->metal_color_id;
             if (!isset($qualityByMetal[$mid])) {
                 $qualityByMetal[$mid] = optional($v->metalColor)->dmt_tooltip;
             }
@@ -864,6 +688,7 @@ class ProductController extends Controller
                 'product_id' => $variation->product_id,
                 'carat' => $variation->carat,
                 'price' => $variation->price,
+                'original_price' => $variation->regular_price,
                 'sku' => $variation->sku,
                 'shape_id' => $variation->shape_id,
                 'metal_color_id' => $variation->metal_color_id,
@@ -880,6 +705,7 @@ class ProductController extends Controller
                 ] : null,
                 'weight' => $variation->weight,
                 'images' => $variation->images,
+                'video' => $variation->video ? asset('storage/variation_videos/' . $variation->video): null,
                 'category' => $category ? [
                     'id' => $category->category_id,
                     'name' => $category->category_name,
@@ -896,7 +722,7 @@ class ProductController extends Controller
             ->map(function ($group) use ($format) {
                 return $group->map($format)->values();
             })
-            ->filter(fn($group) => $group->isNotEmpty())
+            ->filter(fn ($group) => $group->isNotEmpty())
             ->toArray();
 
         $metalIds = array_keys($groupedByMetal);
@@ -905,13 +731,10 @@ class ProductController extends Controller
             $q2 = $qualityByMetal[$b] ?? null;
             $n1 = is_numeric($q1);
             $n2 = is_numeric($q2);
-            if ($n1 && $n2)
-                return ((int) $q1) <=> ((int) $q2);
-            if ($n1)
-                return -1;
-            if ($n2)
-                return 1;
-            return strcmp((string) $q1, (string) $q2);
+            if ($n1 && $n2) return ((int)$q1) <=> ((int)$q2);
+            if ($n1) return -1;
+            if ($n2) return 1;
+            return strcmp((string)$q1, (string)$q2);
         });
 
         $sorted = [];
@@ -940,5 +763,6 @@ class ProductController extends Controller
             'metal_variations' => $sorted,
         ]);
     }
+
 
 }

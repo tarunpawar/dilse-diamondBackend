@@ -16,7 +16,7 @@
             <div class="card-header d-flex justify-content-between align-items-center">
                 <h4 class="mb-0">Category Management</h4>
                 <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#categoryModal" id="addcategoryBtn">
-                    <i class="fas fa-plus me-2"></i>Add New
+                    <i class="fas fa-plus me-2 new"></i>Add New
                 </button>
             </div>
 
