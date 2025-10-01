@@ -24,25 +24,26 @@ class OrderController extends Controller
     public function fetch(Request $request)
     {
         $orders = Order::query();
-        
+
         $total = $orders->count();
         $limit = $request->input('length');
         $start = $request->input('start');
         $search = $request->input('search.value');
-        
+
         if ($search) {
-            $orders->where(function($query) use ($search) {
+            $orders->where(function ($query) use ($search) {
                 $query->where('order_id', 'like', "%{$search}%")
-                      ->orWhere('user_name', 'like', "%{$search}%")
-                      ->orWhere('contact_number', 'like', "%{$search}%");
+                    ->orWhere('user_name', 'like', "%{$search}%")
+                    ->orWhere('contact_number', 'like', "%{$search}%")
+                    ->orWhere('coupon_code', 'like', "%{$search}%");
             });
         }
-        
+
         $filtered = $orders->skip($start)
-                           ->take($limit)
-                           ->orderBy('created_at', 'desc')
-                           ->get();
-        
+            ->take($limit)
+            ->orderBy('created_at', 'desc')
+            ->get();
+
         return response()->json([
             'draw' => $request->input('draw'),
             'recordsTotal' => $total,
@@ -50,7 +51,7 @@ class OrderController extends Controller
             'data' => $filtered
         ]);
     }
-    
+
     public function show(Order $order)
     {
         $itemDetails = json_decode($order->item_details, true);
@@ -74,7 +75,7 @@ class OrderController extends Controller
                 ];
             }
         }
-        
+
         if (isset($itemDetails['jewelry'])) {
             foreach ($itemDetails['jewelry'] as $jewelry) {
                 if (isset($jewelry['id'])) {
@@ -93,7 +94,7 @@ class OrderController extends Controller
                 ];
             }
         }
-        
+
         // Handle combo items
         if (isset($itemDetails['combo'])) {
             foreach ($itemDetails['combo'] as $combo) {
@@ -104,11 +105,10 @@ class OrderController extends Controller
                     'quantity' => $combo['quantity'] ?? 1,
                     'price' => $combo['price'] ?? 0,
                     'size' => $combo['size'] ?? null,
-                    // Add other combo-specific fields if needed
                 ];
             }
         }
-        
+
         // Handle items array structure
         if (isset($itemDetails['items'])) {
             foreach ($itemDetails['items'] as $item) {
@@ -117,10 +117,9 @@ class OrderController extends Controller
                     'type' => $type,
                     'id' => $item['id'] ?? null,
                     'name' => $item['name'] ?? ($type === 'diamond' ? 'Diamond' : 'Jewelry'),
-                    'quantity' => $item['quantity'] ?? 1,
+                    'quantity' => $item['quantity'] ?? $item['itemQuantity'] ?? 1,
                     'price' => $item['price'] ?? 0,
                     'size' => $item['size'] ?? null,
-                    // Add other fields based on type
                 ];
             }
         }
@@ -128,7 +127,7 @@ class OrderController extends Controller
         $diamondNames = DiamondMaster::whereIn('diamondid', $diamondIds)
             ->pluck('diamond_type', 'diamondid')
             ->toArray();
-            
+
         $jewelryNames = Product::whereIn('products_id', $jewelryIds)
             ->pluck('products_name', 'products_id')
             ->toArray();
@@ -142,103 +141,59 @@ class OrderController extends Controller
         return $pdf->download("Invoice-{$order->order_id}.pdf");
     }
 
-    // public function sendInvoice(Request $request, Order $order)
-    // {
-    //     try {
-    //         $to = $request->query('to', 'user');
-    //         $email = $to === 'admin' 
-    //             ? config('mail.from.address') 
-    //             : ($order->user->email ?? optional($order->address)['email'] ?? null);
-
-    //         if (!$email) {
-    //             return response()->json([
-    //                 'success' => false,
-    //                 'message' => 'No valid email found'
-    //             ], 400);
-    //         }
-
-    //         $pdf = Pdf::loadView('admin.DiamondMaster.Orders.invoice', compact('order'));
-    //         $pdfPath = 'invoices/' . $order->order_id . '.pdf';
-    //         Storage::disk('s3')->put($pdfPath, $pdf->output());
-    //         $pdfUrl = Storage::disk('s3')->url($pdfPath);
-
-    //         Mail::send([], [], function ($message) use ($order, $email, $pdfUrl) {
-    //             $message->to($email)
-    //                     ->subject("Invoice - {$order->order_id}")
-    //                     ->html(view('admin.DiamondMaster.emails.email_template_invoice', [
-    //                         'order' => $order,
-    //                         'downloadUrl' => $pdfUrl
-    //                     ])->render());
-    //         });
-
-    //         return response()->json([
-    //             'success' => true,
-    //             'message' => "Invoice sent to " . ($to === 'admin' ? 'admin' : 'customer')
-    //         ]);
-            
-    //     } catch (\Exception $e) {
-    //         Log::error('Invoice error: '.$e->getMessage());
-    //         return response()->json([
-    //             'success' => false,
-    //             'message' => 'Failed to send invoice'
-    //         ], 500);
-    //     }
-    // }
-
     public function sendInvoice(Request $request, Order $order)
-{
-    try {
-        $to = $request->query('to', 'user');
-        $email = $to === 'admin' 
-            ? config('mail.from.address') 
-            : ($order->user->email ?? optional($order->address)['email'] ?? null);
+    {
+        try {
+            $to = $request->query('to', 'user');
+            $email = $to === 'admin'
+                ? config('mail.from.address')
+                : ($order->user->email ?? optional($order->address)['email'] ?? null);
 
-        if (!$email) {
-            return response()->json([
-                'success' => false,
-                'message' => 'No valid email found for the recipient'
-            ], 400);
-        }
+            if (!$email) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'No valid email found for the recipient'
+                ], 400);
+            }
 
-        // Generate PDF
-        $pdf = Pdf::loadView('admin.DiamondMaster.Orders.invoice', compact('order'));
-        
-        // Store PDF on S3
-        $pdfPath = 'invoices/' . $order->order_id . '.pdf';
-        Storage::disk('s3')->put($pdfPath, $pdf->output());
-        $pdfUrl = Storage::disk('s3')->url($pdfPath);
+            // Generate PDF
+            $pdf = Pdf::loadView('admin.DiamondMaster.Orders.invoice', compact('order'));
 
-        // Send email with PDF attachment
-        Mail::send('admin.DiamondMaster.emails.email_template_invoice', [
-            'order' => $order,
-            'downloadUrl' => $pdfUrl
-        ], function ($message) use ($order, $email, $pdf) {
-            $message->to($email)
+            // Store PDF on S3
+            $pdfPath = 'invoices/' . $order->order_id . '.pdf';
+            Storage::disk('s3')->put($pdfPath, $pdf->output());
+            $pdfUrl = Storage::disk('s3')->url($pdfPath);
+
+            // Send email with PDF attachment
+            Mail::send('admin.DiamondMaster.emails.email_template_invoice', [
+                'order' => $order,
+                'downloadUrl' => $pdfUrl
+            ], function ($message) use ($order, $email, $pdf) {
+                $message->to($email)
                     ->subject("Invoice - {$order->order_id}")
                     ->attachData($pdf->output(), "Invoice-{$order->order_id}.pdf");
-        });
+            });
 
-        return response()->json([
-            'success' => true,
-            'message' => "Invoice sent to " . ($to === 'admin' ? 'admin' : 'customer')
-        ]);
-        
-    } catch (\Exception $e) {
-        Log::error('Invoice sending error: '.$e->getMessage());
-        Log::error('Invoice error trace: '.$e->getTraceAsString());
-        
-        return response()->json([
-            'success' => false,
-            'message' => 'Failed to send invoice: ' . $e->getMessage()
-        ], 500);
+            return response()->json([
+                'success' => true,
+                'message' => "Invoice sent to " . ($to === 'admin' ? 'admin' : 'customer')
+            ]);
+        } catch (\Exception $e) {
+            Log::error('Invoice sending error: ' . $e->getMessage());
+            Log::error('Invoice error trace: ' . $e->getTraceAsString());
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to send invoice: ' . $e->getMessage()
+            ], 500);
+        }
     }
-}
-    
+
     public function changeStatus(Request $request, Order $order)
     {
         $validTransitions = [
             'pending' => ['confirmed', 'cancelled'],
-            'processing'=> ['shipped', 'cancelled'],
+            'processing' => ['shipped', 'cancelled'],
             'confirmed' => ['shipped', 'cancelled'],
             'shipped' => ['delivered', 'cancelled'],
             'delivered' => ['returned', 'cancelled'],
@@ -265,7 +220,7 @@ class OrderController extends Controller
         ]);
     }
 
-        public function store(Request $request)
+    public function store(Request $request)
     {
         $data = $request->validate([
             'user_id' => 'required|exists:users,id',
@@ -286,8 +241,10 @@ class OrderController extends Controller
 
         $hasDiamond = false;
         $hasJewelry = false;
+        $hasCombo = false;
         $processedItems = [];
         $validItemsId = [];
+        $totalQuantity = 0; // Initialize total quantity
 
         foreach ($data['item_details'] as $key => $item) {
             if (!is_numeric($key)) {
@@ -301,59 +258,102 @@ class OrderController extends Controller
             $type = $itemData['type'] ?? 'diamond';
             if ($type === 'diamond') $hasDiamond = true;
             if ($type === 'jewelry') $hasJewelry = true;
-            
+            if ($type === 'combo') $hasCombo = true;
+
+            $quantity = $itemData['quantity'] ?? 1;
+            $totalQuantity += $quantity; // Add to total quantity
+
             $processedItem = [
-                'name' => $itemData['name'] 
-                    ?? $itemData['diamond_name'] 
-                    ?? $itemData['jewelry_name'] 
+                'name' => $itemData['name']
+                    ?? $itemData['diamond_name']
+                    ?? $itemData['jewelry_name']
                     ?? ($itemData['title'] ?? 'Product'),
                 'type' => $type,
-                'quantity' => $itemData['quantity'] ?? 1,
+                'quantity' => $quantity,
                 'price' => $itemData['price'] ?? 0,
             ];
 
             if ($type === 'diamond') {
-                $processedItem['certificate_number'] = $itemData['certificate_number'] 
-                    ?? $itemData['certificate_no'] 
+                $processedItem['certificate_number'] = $itemData['certificate_number']
+                    ?? $itemData['certificate_no']
                     ?? null;
-                    
+
                 if (is_numeric($itemKey) && $itemKey != 0) {
                     $validItemsId[] = $itemKey;
                 }
             }
 
             if ($type === 'jewelry') {
-                $processedItem['metal_type'] = $itemData['metal_type'] 
-                    ?? $itemData['metal'] 
+                $processedItem['metal_type'] = $itemData['metal_type']
+                    ?? $itemData['metal']
                     ?? null;
-                $processedItem['metal_color'] = $itemData['metal_color'] 
-                    ?? $itemData['color'] 
+                $processedItem['metal_color'] = $itemData['metal_color']
+                    ?? $itemData['color']
                     ?? null;
-                $processedItem['metal_purity'] = $itemData['metal_purity'] 
-                    ?? $itemData['purity'] 
+                $processedItem['metal_purity'] = $itemData['metal_purity']
+                    ?? $itemData['purity']
                     ?? null;
-                $processedItem['size'] = $itemData['size'] 
-                    ?? $itemData['ring_size'] 
+                $processedItem['size'] = $itemData['size']
+                    ?? $itemData['ring_size']
                     ?? null;
-                    
+
                 if (isset($data['items_id'][$key]) && $data['items_id'][$key] !== null) {
                     $validItemsId[] = $data['items_id'][$key];
                 }
             }
 
+            if ($type === 'combo') {
+                $processedItem['size'] = $itemData['size'] ?? null;
+                $processedItem['metal_type'] = $itemData['metal_type'] ?? null;
+            }
+
             $processedItems[] = $processedItem;
         }
 
-        $data['product_type'] = ($hasDiamond && $hasJewelry) ? 'mixed' : 
-                               ($hasJewelry ? 'jewelry' : 'diamond');
+        // Determine product type
+        if ($hasCombo) {
+            $data['product_type'] = 'combo';
+        } else {
+            $data['product_type'] = ($hasDiamond && $hasJewelry) ? 'mixed' : ($hasJewelry ? 'jewelry' : 'diamond');
+        }
 
         $data['items_id'] = !empty($validItemsId) ? $validItemsId : null;
         $data['item_details'] = $processedItems;
         $data['order_id'] = 'ORD-' . now()->format('Ymd') . '-' . Str::random(4);
+        $data['total_quantity'] = $totalQuantity; // Set total quantity
 
         Order::create($data);
 
         return redirect()->route('orders.index')
-                         ->with('success', 'Order created');
+            ->with('success', 'Order created successfully');
+    }
+
+    public function update(Request $request, Order $order)
+    {
+        $data = $request->validate([
+            'user_name' => 'sometimes|string',
+            'contact_number' => 'sometimes|string',
+            'total_price' => 'sometimes|numeric',
+            'shipping_cost' => 'nullable|numeric',
+            'discount' => 'nullable|numeric',
+            'order_status' => 'sometimes|string',
+        ]);
+
+        $order->update($data);
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Order updated successfully'
+        ]);
+    }
+
+    public function destroy(Order $order)
+    {
+        $order->delete();
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Order deleted successfully'
+        ]);
     }
 }

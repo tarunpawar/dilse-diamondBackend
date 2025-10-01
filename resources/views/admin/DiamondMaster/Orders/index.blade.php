@@ -10,8 +10,9 @@
   </div>
   
   <div class="card mb-4">
-    <div class="card-header d-flex justify-content-between">
-      <h4>Diamond & Jewelry Orders</h4>
+    <div class="card-header d-flex justify-content-between align-items-center">
+      <h4 class="mb-0">Diamond & Jewelry Orders</h4>
+      <span class="badge bg-primary">Total Orders: {{ \App\Models\Order::count() }}</span>
     </div>
     <div class="card-body table-responsive">
       <table class="table table-hover" id="orderTable">
@@ -20,8 +21,11 @@
             <th>Order ID</th>
             <th>Customer</th>
             <th>Type</th>
+            <th>Quantity</th>
             <th>Amount</th>
             <th>Status</th>
+            <th>Coupon Code</th>
+            <th>Discount</th>
             <th>Date</th>
             <th>Actions</th>
           </tr>
@@ -36,10 +40,12 @@
   <div class="modal-dialog modal-xl">
     <div class="modal-content">
       <div class="modal-header">
-        <h5 class="modal-title">Order Invoice</h5>
+        <h5 class="modal-title">Order Invoice - <span id="modalOrderId"></span></h5>
         <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
       </div>
-      <div class="modal-body" id="invoiceContent"></div>
+      <div class="modal-body p-0">
+        <iframe id="invoiceFrame" width="100%" height="600px" frameborder="0" style="border: none;"></iframe>
+      </div>
     </div>
   </div>
 </div>
@@ -48,7 +54,7 @@
 $(function() {
     // Initialize DataTable with server-side processing
     const dataTable = $('#orderTable').DataTable({
-        order: [[5, 'desc']],
+        order: [[8, 'desc']],
         pageLength: 10,
         processing: true,
         serverSide: true,
@@ -57,20 +63,48 @@ $(function() {
             type: 'GET'
         },
         columns: [
-            { data: 'order_id', name: 'order_id' },
-            { data: 'user_name', name: 'user_name' },
+            { 
+                data: 'order_id', 
+                name: 'order_id',
+                render: function(data) {
+                    return `<strong>${data}</strong>`;
+                }
+            },
+            { 
+                data: 'user_name', 
+                name: 'user_name',
+                render: function(data, type, row) {
+                    return `${data}<br><small class="text-muted">${row.contact_number}</small>`;
+                }
+            },
             { 
                 data: 'product_type', 
                 name: 'product_type',
                 render: function(data) {
-                    return data; // Already formatted like "Diamond, Jewelry"
+                    const typeClass = {
+                        'diamond': 'warning',
+                        'jewelry': 'info',
+                        'mixed': 'primary',
+                        'combo': 'success'
+                    }[data] || 'secondary';
+                    
+                    return `<span class="badge bg-${typeClass}">${data.charAt(0).toUpperCase() + data.slice(1)}</span>`;
+                }
+            },
+            { 
+                data: 'total_quantity', 
+                name: 'total_quantity',
+                className: 'text-center',
+                render: function(data) {
+                    return `<span class="badge bg-dark">${data}</span>`;
                 }
             },
             { 
                 data: 'total_price', 
                 name: 'total_price',
-                render: function(data) {
-                    return '₹' + parseFloat(data).toFixed(2);
+                render: function(data, type, row) {
+                    const grandTotal = parseFloat(data) + parseFloat(row.shipping_cost || 0) - parseFloat(row.discount || 0);
+                    return `$${parseFloat(data).toFixed(2)}<br><small class="text-success">Total: $${grandTotal.toFixed(2)}</small>`;
                 }
             },
             {
@@ -86,17 +120,32 @@ $(function() {
                         returned: 'warning'
                     }[data] || 'secondary';
                     
-                    // First letter uppercase
                     const label = data.charAt(0).toUpperCase() + data.slice(1);
-
                     return `<span class="badge bg-${statusClass}">${label}</span>`;
+                }
+            },
+            { 
+                data: 'coupon_code', 
+                name: 'coupon_code',
+                render: function(data) {
+                    return data ? `<span class="badge bg-light text-dark">${data}</span>` : 'N/A';
+                }
+            },
+            { 
+                data: 'coupon_discount', 
+                name: 'coupon_discount',
+                render: function(data, type, row) {
+                    const totalDiscount = parseFloat(data || 0) + parseFloat(row.discount || 0);
+                    return totalDiscount > 0 ? 
+                        `<span class="text-danger">-$${totalDiscount.toFixed(2)}</span>` : 
+                        '<span class="text-muted">$0.00</span>';
                 }
             },
             { 
                 data: 'created_at', 
                 name: 'created_at',
                 render: function(data) {
-                    return new Date(data).toLocaleDateString();
+                    return `<small>${new Date(data).toLocaleDateString()}<br>${new Date(data).toLocaleTimeString()}</small>`;
                 }
             },
             {
@@ -104,27 +153,64 @@ $(function() {
                 name: 'actions',
                 orderable: false,
                 searchable: false,
-                render: function(data) {
+                render: function(data, type, row) {
                     return `
-                        <button class="btn btn-sm btn-primary preview-invoice" data-id="${data}">
-                            <i class="fas fa-eye"></i> View
-                        </button>
+                        <div class="btn-group">
+                            <button class="btn btn-sm btn-primary preview-invoice" data-id="${data}" title="View Invoice">
+                                <i class="fas fa-eye"></i>
+                            </button>
+                            <button class="btn btn-sm btn-info download-invoice" data-id="${data}" title="Download Invoice">
+                                <i class="fas fa-download"></i>
+                            </button>
+                        </div>
                     `;
                 }
             }
-        ]
+        ],
+        createdRow: function(row, data, dataIndex) {
+            if (data.order_status === 'pending') {
+                $(row).addClass('table-warning');
+            }
+            if (data.order_status === 'cancelled') {
+                $(row).addClass('table-danger');
+            }
+        }
     });
 
+    // View invoice in modal using iframe to avoid CSS conflicts
     $('#orderTable').on('click', '.preview-invoice', function() {
         const id = $(this).data('id');
-        $.get(`{{ url('admin/orders') }}/${id}`, function(html) {
-            $('#invoiceContent').html(html);
-            
-            // Initialize Bootstrap modal properly
-            const invoiceModal = new bootstrap.Modal(document.getElementById('invoiceModal'));
-            invoiceModal.show();
+        const invoiceUrl = `{{ url('admin/orders') }}/${id}`;
+        $('#invoiceFrame').attr('src', invoiceUrl);
+        $('#modalOrderId').text('Loading...');
+        
+        // Update title when iframe loads
+        $('#invoiceFrame').on('load', function() {
+            try {
+                const iframeDoc = this.contentDocument || this.contentWindow.document;
+                const title = iframeDoc.querySelector('.invoice-title p');
+                if (title) {
+                    $('#modalOrderId').text(title.textContent);
+                }
+            } catch (e) {
+                $('#modalOrderId').text('Order Invoice');
+            }
         });
+        
+        const invoiceModal = new bootstrap.Modal(document.getElementById('invoiceModal'));
+        invoiceModal.show();
     });
+
+    // Download invoice
+    $('#orderTable').on('click', '.download-invoice', function() {
+        const id = $(this).data('id');
+        window.open(`{{ url('admin/orders') }}/${id}/invoice/download`, '_blank');
+    });
+
+    // Auto-refresh data every 30 seconds
+    setInterval(function() {
+        dataTable.ajax.reload(null, false);
+    }, 30000);
 });
 </script>
 @endsection

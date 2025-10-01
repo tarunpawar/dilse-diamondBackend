@@ -138,7 +138,7 @@
                         </div>
                         <div class="d-flex flex-column">
                           <small>{{ $year }}</small>
-                          <h6 class="mb-0">₹{{ number_format($amount, 2) }}</h6>
+                          <h6 class="mb-0">${{ number_format($amount, 2) }}</h6>
                         </div>
                       </div>
                     @endforeach
@@ -221,11 +221,11 @@
                           <span class="badge bg-label-warning rounded-pill">Year {{ $profileYear }}</span>
                         </div>
                         <div class="mt-sm-auto">
-  <small class="text-success text-nowrap fw-semibold">
-    <i class="bx bx-chevron-up"></i> {{ $salesPercentage }}%
-  </small>
-  <h3 class="mb-0">₹{{ number_format($profileIncome, 2) }}</h3>
-</div>
+                          <small class="text-success text-nowrap fw-semibold">
+                            <i class="bx bx-chevron-up"></i> {{ $salesPercentage }}%
+                          </small>
+                          <h3 class="mb-0">${{ number_format($profileIncome, 2) }}</h3>
+                        </div>
                       </div>
                       <div id="profileReportChart"></div>
                     </div>

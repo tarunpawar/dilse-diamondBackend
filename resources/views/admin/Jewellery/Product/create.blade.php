@@ -317,18 +317,43 @@
                                                 <div class="error-message" id="error-products_slug"></div>
                                             </div>
 
-                                            <!-- Build Product -->
+                                            <!-- Build Product Section Update -->
                                             <div class="col-md-6 mb-3">
-                                                <label class="form-label">Build Product *</label>
+                                                <label class="form-label">Build Product Type *</label>
                                                 <div>
-                                                    <select name="is_build_product" class="form-select" required>
-                                                        <option selected disabled value="">Select Build Product</option>
-                                                        <option value="1" {{ old('is_build_product', $product->is_build_product ?? '') == '1' ? 'selected' : '' }}>Yes</option>
-                                                        <option value="0" {{ old('is_build_product', $product->is_build_product ?? '') == '0' ? 'selected' : '' }}>No</option>
+                                                    <select name="is_build_product" class="form-select" required id="is_build_product">
+                                                        <option value="" selected disabled>Select Build Product Type</option>
+                                                        @foreach($buildProductOptions as $value => $label)
+                                                            <option value="{{ $value }}">
+                                                                {{ $label }}
+                                                            </option>
+                                                        @endforeach
                                                     </select>
                                                     <div class="error-message" id="error-is_build_product"></div>
                                                 </div>
                                             </div>
+
+
+                                             <!-- Gender Field (Show only for Wedding) -->
+                                            <div class="col-md-6 mb-3 wedding-field" style="display: none;">
+                                                <label class="form-label">Gender *</label>
+                                                <select name="gender" class="form-select">
+                                                    <option value="0" {{ old('gender', '0') == '0' ? 'selected' : '' }}>Man</option>
+                                                    <option value="1" {{ old('gender') == '1' ? 'selected' : '' }}>Woman</option>
+                                                </select>
+                                                <div class="error-message" id="error-gender"></div>
+                                            </div>
+
+                                            <!-- Bond Field (Show only for Wedding) -->
+                                            <div class="col-md-6 mb-3 wedding-field" style="display: none;">
+                                                <label class="form-label">Bond *</label>
+                                                <select name="bond" class="form-select">
+                                                    <option value="0" {{ old('bond', '0') == '0' ? 'selected' : '' }}>Metal</option>
+                                                    <option value="1" {{ old('bond') == '1' ? 'selected' : '' }}>Diamond</option>
+                                                </select>
+                                                <div class="error-message" id="error-bond"></div>
+                                            </div>
+
 
                                             <!-- Style Category (shown for build product = Yes) -->
                                             <div class="col-md-6 mb-3 build-field">
@@ -563,9 +588,10 @@
                                                         <th>Metal Type *</th>
                                                         <th>Shape *</th>
                                                         <th>Carat Weight *</th>
-                                                        <th>Price (₹) *</th>
-                                                        <th>Regular Price (₹) *</th>
+                                                        <th>Price*</th>
+                                                        <th>Regular Price</th>
                                                         <th>Stock</th>
+                                                        <th>Best Selling</th>
                                                         <th>Images</th>
                                                         <th>Video</th>                                                        
                                                         <th>Actions</th>
@@ -615,6 +641,10 @@
                                                         <td>
                                                             <input type="number" name="variations[0][stock]" class="form-control" value="0" placeholder="0">
                                                             <div class="error-message" id="error-variations-0-stock"></div>
+                                                        </td>
+
+                                                        <td>
+                                                            <input type="checkbox" name="variations[0][is_best_selling]" value="1">
                                                         </td>
                                                         <td class="variation-image-cell">
                                                             <!-- Preview container for new images -->
@@ -917,6 +947,9 @@
                         <td>
                             <input type="number" name="variations[${variationCount}][stock]" class="form-control" value="0" placeholder="0">
                             <div class="error-message" id="error-variations-${variationCount}-stock"></div>
+                        </td>
+                        <td>
+                            <input type="checkbox" name="variations[${variationCount}][is_best_selling]" value="1">
                         </td>
                         <td>
                             <div class="d-flex flex-wrap gap-2 mb-2" id="variation-images-${variationCount}"></div>
@@ -1282,17 +1315,16 @@
             $('#categories_id').trigger('change');
         }
     });
-    function toggleBuildFields() {
-        const isBuild = $('select[name="is_build_product"]').val() === '1';
 
-        if (isBuild) {
+    function toggleBuildFields() {
+        const isBuild = $('select[name="is_build_product"]').val();
+        
+        // Only show build fields for Build Product (1), show non-build for others
+        if (isBuild === '1') {
             $('.non-build-field').hide();
-            $('.build-field').show();
-        } else if ($('select[name="is_build_product"]').val() === '0') {
-            $('.non-build-field').show();
             $('.build-field').show();
         } else {
-            $('.non-build-field').hide();
+            $('.non-build-field').show();
             $('.build-field').hide();
         }
     }
@@ -1347,5 +1379,47 @@
         $(this).closest('.existing-video').remove();
         $(`input[name="variations[${variationId}][remove_video]"]`).val('1');
     });
+
+    function toggleBuildFields() {
+    const isBuild = $('select[name="is_build_product"]').val();
+    
+    if (isBuild === '1') { 
+        $('.non-build-field').hide();
+        $('.build-field').show();
+        $('.wedding-field').hide();
+    } else if (isBuild === '2') { 
+        $('.non-build-field').show(); 
+        $('.build-field').hide();
+        $('.wedding-field').show();
+    } else { 
+        $('.non-build-field').show();
+        $('.build-field').hide();
+        $('.wedding-field').hide();
+    }
+}
+
+function toggleWeddingFields() {
+    const isBuild = $('#is_build_product').val();
+    
+    if (isBuild === '2') {
+        $('.wedding-field').show();
+        $('select[name="gender"]').prop('required', true);
+        $('select[name="bond"]').prop('required', true);
+    } else {
+        $('.wedding-field').hide();
+        $('select[name="gender"]').prop('required', false);
+        $('select[name="bond"]').prop('required', false);
+    }
+}
+
+$(document).ready(function () {
+    toggleBuildFields();
+    toggleWeddingFields();
+    
+    $('select[name="is_build_product"]').change(function() {
+        toggleBuildFields();
+        toggleWeddingFields();
+    });
+});
     </script>
 @endsection

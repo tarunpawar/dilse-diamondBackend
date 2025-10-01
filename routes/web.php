@@ -30,7 +30,7 @@ use App\Http\Controllers\Jewellery\DiamondClarityGroupController;
 use App\Http\Controllers\Jewellery\ProductColorMasterController;
 use App\Http\Controllers\Jewellery\ProductCutMasterController;
 use App\Http\Controllers\Jewellery\ProductController;
-use App\Http\Controllers\Jewellery\ProductImageController;
+// use App\Http\Controllers\Jewellery\ProductImageController;
 use App\Http\Controllers\Jewellery\ProductOptionController;
 use App\Http\Controllers\Jewellery\ProductOptionValueController;
 use App\Http\Controllers\Jewellery\ProductStoneController;
@@ -52,6 +52,7 @@ use App\Http\Controllers\Jewellery\CollectionController;
 use App\Http\Controllers\ProductImportController;
 use App\Http\Controllers\Admin\DashboardController;
 use App\Http\Controllers\Api\PayPalController;
+use App\Http\Controllers\Jewellery\CouponController;
 
 Route::get('/import-products', [ProductImportController::class, 'showForm'])->name('products.import.form');
 Route::post('/import-products', [ProductImportController::class, 'import'])->name('products.import');
@@ -339,13 +340,13 @@ Route::prefix('admin')->middleware(['auth', 'admin'])->group(function () {
         Route::put('product-to-style-category/{id}', 'update')->name('ptsc.update');
         Route::delete('product-to-style-category/{id}', 'destroy')->name('ptsc.destroy');
     });
-        Route::controller(\App\Http\Controllers\Jewellery\ProductImageController::class)->group(function(){
-        Route::get('product-image/', [ProductImageController::class, 'index'])->name('product-image.index');
-        Route::post('product-image/store', [ProductImageController::class, 'store'])->name('product-image.store');
-        Route::get('product-image/edit/{id}', [ProductImageController::class, 'edit'])->name('product-image.edit');
-        Route::post('product-image/update/{id}', [ProductImageController::class, 'update'])->name('product-image.update');
-        Route::delete('product-image/delete/{id}', [ProductImageController::class, 'destroy'])->name('product-image.delete');
-    });
+    // Route::controller(\App\Http\Controllers\Jewellery\ProductImageController::class)->group(function(){
+    //     Route::get('product-image/', [ProductImageController::class, 'index'])->name('product-image.index');
+    //     Route::post('product-image/store', [ProductImageController::class, 'store'])->name('product-image.store');
+    //     Route::get('product-image/edit/{id}', [ProductImageController::class, 'edit'])->name('product-image.edit');
+    //     Route::post('product-image/update/{id}', [ProductImageController::class, 'update'])->name('product-image.update');
+    //     Route::delete('product-image/delete/{id}', [ProductImageController::class, 'destroy'])->name('product-image.delete');
+    // });
 
         Route::controller(\App\Http\Controllers\Jewellery\ProductToCategoryController::class)->group(function () {
         Route::get('product-category', 'index')->name('productCategory.index');
@@ -496,6 +497,15 @@ Route::prefix('admin')->middleware(['auth', 'admin'])->group(function () {
         Route::delete('collections/destroy/{id}','destroy')->name('collections.destroy');
         Route::post('collections/status/{id}', 'updateStatus')->name('collections.status');
         Route::post('collections/display/{id}', 'updateDisplay')->name('collections.display');
+    });
+
+    Route::controller(CouponController::class)->group(function () {
+        Route::get('/coupons', [CouponController::class, 'index'])->name('admin.coupons.index');
+        Route::post('/coupons', [CouponController::class, 'store'])->name('admin.coupons.store');
+        Route::get('coupons/{coupon}/edit', [CouponController::class, 'edit'])->name('admin.coupons.edit');
+        Route::put('/coupons/{coupon}', [CouponController::class, 'update'])->name('admin.coupons.update');
+        Route::delete('/coupons/{coupon}', [CouponController::class, 'destroy'])->name('admin.coupons.destroy');
+        Route::post('/coupons/{coupon}/status', [CouponController::class, 'updateStatus'])->name('admin.coupons.status');
     });
 
 });

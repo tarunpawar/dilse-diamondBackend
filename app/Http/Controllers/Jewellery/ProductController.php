@@ -8,7 +8,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Facades\Auth;
 use Yajra\DataTables\Facades\DataTables;
-use App\Models\Category;  
+use App\Models\Category;
 use App\Models\ProductImage;
 use App\Models\DiamondMaster;
 use App\Models\Country;
@@ -46,8 +46,8 @@ class ProductController extends Controller
                 ->addIndexColumn()
                 ->addColumn('products_name', function ($product) {
                     return $product->products_name ?: '-';
-                }) 
-                ->addColumn('category_name', function($product) {
+                })
+                ->addColumn('category_name', function ($product) {
                     return $product->category_name ?? 'N/A';
                 })
                 ->editColumn('products_status', function ($product) {
@@ -56,7 +56,7 @@ class ProductController extends Controller
                         : '<span class="badge bg-danger">Inactive</span>';
                 })
                 ->editColumn('date_added', function ($product) {
-                    return $product->date_added 
+                    return $product->date_added
                         ? date('d M Y', strtotime($product->date_added))
                         : '';
                 })
@@ -71,14 +71,14 @@ class ProductController extends Controller
     {
         $product = new Product();
         $vendors = DiamondVendor::select('vendorid', 'vendor_name')->get();
-        $stock_numbers = DiamondMaster::select('diamondid','vendor_stock_number')->limit(100)->get();
+        $stock_numbers = DiamondMaster::select('diamondid', 'vendor_stock_number')->limit(100)->get();
         $vendor_prices = DiamondMaster::select('vendor_price')
             ->distinct()
             ->orderBy('vendor_price', 'asc')
             ->limit(100)
             ->get();
         $countries = Country::select('country_id', 'country_name')->get();
-        
+
         $categories = Category::with('children')
             ->whereNull('parent_id')
             ->get();
@@ -87,6 +87,9 @@ class ProductController extends Controller
         $initialPscId = old('psc_id', '');
         $initialCollectionId = old('product_collection_id', '');
         $initialStyleGroupId = old('product_style_group_id', '');
+
+        // Add build product options
+        $buildProductOptions = Product::getBuildProductOptions();
 
         $diamond_qualities = \App\Models\DiamondQualityGroup::pluck('dqg_name', 'dqg_id');
         $diamond_clarities = \App\Models\ProductClarityMaster::pluck('name', 'id');
@@ -111,25 +114,26 @@ class ProductController extends Controller
         $metal_types_colors = \App\Models\MetalType::pluck('dmt_name', 'dmt_id');
         $parentCategories = Category::whereNull('parent_id')->get();
         $styleCategories = \App\Models\ProductStyleCategory::where('engagement_menu', 1)
-                    ->pluck('psc_name', 'psc_id');
+            ->pluck('psc_name', 'psc_id');
         $collections = \App\Models\ProductCollection::pluck('name', 'id');
         $styleGroups = ProductStyleGroup::all()
-        ->map(function($group) {
-            $names = json_decode($group->psg_names, true);
-            $group->formatted_names = is_array($names) ? implode(', ', $names) : $group->psg_names;
-            return $group;
-        })
-        ->pluck('formatted_names', 'psg_id');
+            ->map(function ($group) {
+                $names = json_decode($group->psg_names, true);
+                $group->formatted_names = is_array($names) ? implode(', ', $names) : $group->psg_names;
+                return $group;
+            })
+            ->pluck('formatted_names', 'psg_id');
 
-
-        return view('admin.Jewellery.Product.create', 
+        return view(
+            'admin.Jewellery.Product.create',
             compact(
-                'product', 
-                'vendors', 
+                'product',
+                'vendors',
                 'stock_numbers',
                 'vendor_prices',
-                'countries', 
+                'countries',
                 'categories',
+                'buildProductOptions', // Add this
                 'diamond_qualities',
                 'diamond_clarities',
                 'diamond_colors',
@@ -162,12 +166,11 @@ class ProductController extends Controller
             )
         );
     }
-
     public function store(Request $request)
     {
         $selectedCategory = $request->categories_id;
         $isParent = false;
-    
+
         if (strpos($selectedCategory, 'parent_') === 0) {
             $categoryId = str_replace('parent_', '', $selectedCategory);
             $request->merge(['categories_id' => $categoryId]);
@@ -196,7 +199,7 @@ class ProductController extends Controller
             if (!Storage::disk('public')->exists('variation_images')) {
                 Storage::disk('public')->makeDirectory('variation_images');
             }
-            
+
             // Create variation_videos directory if not exists
             if (!Storage::disk('public')->exists('variation_videos')) {
                 Storage::disk('public')->makeDirectory('variation_videos');
@@ -216,7 +219,7 @@ class ProductController extends Controller
                         }
                     }
                 }
-                
+
                 // Process variation video
                 if ($request->hasFile("variations.$index.video")) {
                     $video = $request->file("variations.$index.video");
@@ -251,6 +254,7 @@ class ProductController extends Controller
                     'regular_price' => $variation['regular_price'],
                     'sku' => $sku,
                     'stock' => $variation['stock'] ?? 0,
+                    'is_best_selling' => $variation['is_best_selling'] ?? 0,
                     'metal_color_id' => $variation['metal_color_id'] ?? null,
                     'shape_id' => $variation['shape_id'] ?? null,
                     'images' => $imagePaths,
@@ -267,7 +271,7 @@ class ProductController extends Controller
             ]);
         }
 
-        if ($request->filled('categories_id')) {
+        if ($request->filled('categories_id') && $request->is_build_product !== 'is_build_product') {
             ProductToCategory::create([
                 'products_id' => $product->products_id,
                 'categories_id' => $request->categories_id
@@ -281,15 +285,19 @@ class ProductController extends Controller
             ]);
         }
 
-        ProductToShape::create([
-            'products_id' => $product->products_id,
-            'shape_id' => $request->shape_id
-        ]);
+        if ($request->filled('shape_id')) {
+            ProductToShape::create([
+                'products_id' => $product->products_id,
+                'shape_id' => $request->shape_id
+            ]);
+        }
 
-        ProductToStoneType::create([
-            'sptst_products_id' => $product->products_id,
-            'sptst_stone_type_id' => $request->stone_type_id
-        ]);
+        if ($request->filled('stone_type_id')) {
+            ProductToStoneType::create([
+                'sptst_products_id' => $product->products_id,
+                'sptst_stone_type_id' => $request->stone_type_id
+            ]);
+        }
 
         if ($request->filled('style_category_id')) {
             ProductToStyleCategory::create([
@@ -313,6 +321,21 @@ class ProductController extends Controller
             ]);
         }
 
+        // Build Product Logic
+        if ($request->is_build_product == '1') {
+            // Assign style category for build product
+            $product->psc_id = $request->psc_id;
+            $product->save();
+        } else {
+            // Non-build product logic: assign categories
+            if ($request->categories_id) {
+                ProductToCategory::create([
+                    'products_id' => $product->products_id,
+                    'categories_id' => $request->categories_id
+                ]);
+            }
+        }
+
         return response()->json([
             'redirect' => route('product.index'),
             'message' => 'Product created successfully!',
@@ -328,26 +351,29 @@ class ProductController extends Controller
         ])->findOrFail($id);
 
         $isParentCategory = Category::where('category_id', $product->categories_id)
-        ->whereNull('parent_id')
-        ->exists();
+            ->whereNull('parent_id')
+            ->exists();
 
-        $selectedCategoryValue = $isParentCategory 
-            ? 'parent_'.$product->categories_id 
+        $selectedCategoryValue = $isParentCategory
+            ? 'parent_' . $product->categories_id
             : $product->categories_id;
 
         $initialPscId = $product->psc_id ?? '';
         $initialCollectionId = $product->product_collection_id ?? '';
         $initialStyleGroupId = $product->product_style_group_id ?? '';
 
+        // Add build product options
+        $buildProductOptions = Product::getBuildProductOptions();
+
         $vendors = DiamondVendor::select('vendorid', 'vendor_name')->get();
-        $stock_numbers = DiamondMaster::select('diamondid','vendor_stock_number')->limit(100)->get();
+        $stock_numbers = DiamondMaster::select('diamondid', 'vendor_stock_number')->limit(100)->get();
         $vendor_prices = DiamondMaster::select('vendor_price')
             ->distinct()
             ->orderBy('vendor_price', 'asc')
             ->limit(100)
             ->get();
         $countries = Country::select('country_id', 'country_name')->get();
-        
+
         $categories = Category::with('children')
             ->whereNull('parent_id')
             ->get();
@@ -371,21 +397,20 @@ class ProductController extends Controller
         $stone_to_types = \App\Models\ProductToStoneType::pluck('sptst_id');
         $metalColor = \App\Models\ProductMetalColor::pluck('dmc_name', 'dmc_id');
         $diamondLabs = \App\Models\DiamondLab::all();
-        $weightGroups = \App\Models\DiamondWeightGroup::pluck('dwg_name', 'dwg_id') ;
+        $weightGroups = \App\Models\DiamondWeightGroup::pluck('dwg_name', 'dwg_id');
         $metal_types_colors = \App\Models\MetalType::pluck('dmt_name', 'dmt_id');
         $parentCategories = Category::whereNull('parent_id')->get();
         $childCategories = Category::where('parent_id', $product->parent_category_id)->get();
-                $styleCategories = \App\Models\ProductStyleCategory::where('engagement_menu', 1)
-                    ->pluck('psc_name', 'psc_id');
+        $styleCategories = \App\Models\ProductStyleCategory::where('engagement_menu', 1)
+            ->pluck('psc_name', 'psc_id');
         $collections = \App\Models\ProductCollection::pluck('name', 'id');
         $styleGroups = ProductStyleGroup::all()
-        ->map(function($group) {
-            $names = json_decode($group->psg_names, true);
-            $group->formatted_names = is_array($names) ? implode(', ', $names) : $group->psg_names;
-            return $group;
-        })
-        ->pluck('formatted_names', 'psg_id');
-
+            ->map(function ($group) {
+                $names = json_decode($group->psg_names, true);
+                $group->formatted_names = is_array($names) ? implode(', ', $names) : $group->psg_names;
+                return $group;
+            })
+            ->pluck('formatted_names', 'psg_id');
 
         return view('admin.Jewellery.Product.edit', compact(
             'product',
@@ -395,6 +420,7 @@ class ProductController extends Controller
             'vendor_prices',
             'countries',
             'categories',
+            'buildProductOptions', // Add this
             'diamond_qualities',
             'diamond_clarities',
             'diamond_colors',
@@ -432,7 +458,7 @@ class ProductController extends Controller
     {
         $selectedCategory = $request->categories_id;
         $isParent = false;
-        
+
         if (strpos($selectedCategory, 'parent_') === 0) {
             $categoryId = str_replace('parent_', '', $selectedCategory);
             $request->merge(['categories_id' => $categoryId]);
@@ -449,7 +475,7 @@ class ProductController extends Controller
 
         $product = Product::findOrFail($id);
         $data = $request->except([
-            'variations', 
+            'variations',
             'removed_variation_images'
         ]);
         $data['updated_by'] = Auth::id();
@@ -463,7 +489,7 @@ class ProductController extends Controller
         if (!Storage::disk('public')->exists('variation_images')) {
             Storage::disk('public')->makeDirectory('variation_images');
         }
-        
+
         // Create variation_videos directory if not exists
         if (!Storage::disk('public')->exists('variation_videos')) {
             Storage::disk('public')->makeDirectory('variation_videos');
@@ -473,11 +499,11 @@ class ProductController extends Controller
             foreach ($request->variations as $index => $variation) {
                 $imagePaths = [];
                 $videoName = null;
-                
+
                 // Process existing images
                 if (isset($variation['existing_images'])) {
-                    $imagePaths = is_array($variation['existing_images']) 
-                        ? $variation['existing_images'] 
+                    $imagePaths = is_array($variation['existing_images'])
+                        ? $variation['existing_images']
                         : [$variation['existing_images']];
                 }
 
@@ -506,7 +532,7 @@ class ProductController extends Controller
                         }
                     }
                 }
-                
+
                 // Process video
                 $videoName = null;
 
@@ -517,7 +543,7 @@ class ProductController extends Controller
                         if (!empty($variation['existing_video'])) {
                             Storage::disk('public')->delete("variation_videos/{$variation['existing_video']}");
                         }
-                        
+
                         $videoName = 'variation_video_' . time() . '_' . Str::random(10) . '.' . $video->extension();
                         $video->storeAs('variation_videos', $videoName, 'public');
                     }
@@ -541,6 +567,7 @@ class ProductController extends Controller
                             'price' => $variation['price'],
                             'regular_price' => $variation['regular_price'],
                             'stock' => $variation['stock'] ?? 0,
+                            'is_best_selling' => $variation['is_best_selling'] ?? 0,
                             'metal_color_id' => $variation['metal_color_id'] ?? null,
                             'shape_id' => $variation['shape_id'] ?? null,
                             'images' => $imagePaths,
@@ -557,7 +584,7 @@ class ProductController extends Controller
                 // Create new variation
                 $weight = $variation['weight'];
                 $weightStr = str_replace('.', '', number_format($weight, 2, '.', ''));
-                
+
                 $shapeId = $variation['shape_id'] ?? null;
                 $shape = \App\Models\DiamondShape::find($shapeId);
                 $shapeCode = $shape ? strtoupper(substr($shape->name, 0, 2)) : 'XX';
@@ -580,7 +607,7 @@ class ProductController extends Controller
                     'shape_id' => $variation['shape_id'] ?? null,
                     'images' => $imagePaths
                 ];
-                
+
                 if ($videoName !== null) {
                     $variationData['video'] = $videoName;
                 }
@@ -601,11 +628,11 @@ class ProductController extends Controller
                     }
                 }
             }
-            
+
             if (!empty($variation->video)) {
                 Storage::disk('public')->delete("variation_videos/{$variation->video}");
             }
-            
+
             $variation->delete();
         }
 
@@ -615,7 +642,8 @@ class ProductController extends Controller
             ['sptmt_metal_type_id' => $request->metal_type_id]
         );
 
-        if ($request->is_build_product == 0) {
+        // Update category association based on is_build_product value
+        if ($request->is_build_product !== 'is_build_product') {
             ProductToCategory::updateOrCreate(
                 ['products_id' => $id],
                 ['categories_id' => $request->categories_id]
@@ -659,6 +687,29 @@ class ProductController extends Controller
             ]
         );
 
+
+        // Build Product Logic
+        if ($request->is_build_product == '1') {
+            // Assign style category for build product
+            $product->psc_id = $request->psc_id;
+            $product->save();
+
+            // Remove any old category assignments if they exist
+            ProductToCategory::where('products_id', $id)->delete();
+        } else {
+            // Non-build product logic: assign categories
+            if ($request->categories_id) {
+                ProductToCategory::updateOrCreate(
+                    ['products_id' => $id],
+                    ['categories_id' => $request->categories_id]
+                );
+            }
+            // Remove style category if previously set
+            $product->psc_id = null;
+            $product->save();
+        }
+
+
         return response()->json([
             'redirect' => route('product.index'),
             'message' => 'Product updated successfully!',
@@ -699,10 +750,10 @@ class ProductController extends Controller
     public function getStyleGroupsByCollection(Request $request)
     {
         $collectionId = $request->input('collection_id');
-        
+
         $styleGroups = \App\Models\ProductStyleGroup::where('collection_id', $collectionId)
             ->get()
-            ->map(function($group) {
+            ->map(function ($group) {
                 $names = json_decode($group->psg_names, true);
                 return [
                     'psg_id' => $group->psg_id,
@@ -713,10 +764,10 @@ class ProductController extends Controller
         return response()->json($styleGroups);
     }
 
-     public function destroy($id)
+    public function destroy($id)
     {
         $product = Product::findOrFail($id);
-        
+
         foreach ($product->variations as $variation) {
             // Delete variation images
             if (!empty($variation->images)) {
@@ -726,7 +777,7 @@ class ProductController extends Controller
                     }
                 }
             }
-            
+
             // Delete variation video
             if (!empty($variation->video)) {
                 $videoPath = "variation_videos/" . $variation->video;
@@ -734,12 +785,12 @@ class ProductController extends Controller
                     Storage::disk('public')->delete($videoPath);
                 }
             }
-            
+
             $variation->delete();
         }
-        
+
         $product->delete();
-        
+
         return response()->json([
             'success' => true,
             'message' => 'Product deleted successfully!',
@@ -759,18 +810,23 @@ class ProductController extends Controller
             'variations.*.metal_color_id' => 'required|exists:metal_type,dmt_id',
             'variations.*.weight'         => 'required|numeric|min:0.01',
             'variations.*.price'          => 'required|numeric|min:0',
-            'is_build_product'            => 'required|in:0,1',
+            'is_build_product'            => 'required|in:0,1,2,3,4', // Update this line
             'variations.*.regular_price'  => 'required|numeric|min:0',
             'variations.*.price'          => 'required|numeric|min:0|lte:variations.*.regular_price',
             'variations.*.shape_id'       => 'required|exists:diamond_shape_master,id',
             'variations.*.video'          => 'sometimes|mimetypes:video/avi,video/mpeg,video/quicktime,video/mp4|max:51200',
         ];
 
+        // Update the condition for build product
         if (request('is_build_product') == '1') {
-                        $rules['psc_id'] = 'required|exists:products_style_category,psc_id'; 
-
+            $rules['psc_id'] = 'required|exists:products_style_category,psc_id';
         } else {
             $rules['categories_id'] = 'required';
+        }
+
+        if (request('is_build_product') == '2') { // Wedding
+            $rules['gender'] = 'required|in:0,1';
+            $rules['bond'] = 'required|in:0,1';
         }
 
         return $rules;
@@ -865,8 +921,14 @@ class ProductController extends Controller
             'variations.*.metal_color_id.required' => 'Metal color is required for all variations.',
             'variations.*.video.max' => 'The video size cannot exceed 50MB. Please upload a smaller video.',
             'variations.*.video.mimetypes' => 'The video file is in an invalid format. Only AVI, MPEG, QuickTime, or MP4 files are allowed.',
-            'psc_id.required'         => 'Style Category is required when Build Product is selected.',
-            'categories_id.required'  => 'Product Category is required when Build Product is not selected.',
+            'is_build_product.required' => 'Build Product type is required.',
+            'is_build_product.in' => 'Build Product must be one of: jewelry, is_build_product, gift, sale.',
+            'psc_id.required'         => 'Style Category is required when Build Product is "is_build_product".',
+            'categories_id.required'  => 'Product Category is required when Build Product is not "is_build_product".',
+            'gender.required' => 'Gender is required when Build Product is Wedding.',
+            'gender.in' => 'Gender must be either Man or Woman.',
+            'bond.required' => 'Bond is required when Build Product is Wedding.',
+            'bond.in' => 'Bond must be either Metal or Diamond.',
         ];
     }
 }

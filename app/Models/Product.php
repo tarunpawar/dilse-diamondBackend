@@ -15,6 +15,8 @@ class Product extends Model
         'products_name',
         'products_description',
         'products_short_description',
+        'gender', 
+        'bond' ,
         'available',
         'products_quantity',
         'products_model',
@@ -88,6 +90,51 @@ class Product extends Model
         'date_updated',
         'shop_zone_id'
     ];
+
+    const BUILD_PRODUCT_JEWELRY = '0';
+    const BUILD_PRODUCT_BUILD = '1';
+    const BUILD_PRODUCT_WEDDING = '2';
+    const BUILD_PRODUCT_GIFTS = '3';
+    const BUILD_PRODUCT_SALE = '4';
+
+    // Add these constants for gender and bond
+    const GENDER_MAN = '0';
+    const GENDER_WOMAN = '1';
+
+    const BOND_METAL = '0';
+    const BOND_DIAMOND = '1';
+
+     public static function getGenderOptions()
+    {
+        return [
+            self::GENDER_MAN => 'Man',
+            self::GENDER_WOMAN => 'Woman',
+        ];
+    }
+
+    public static function getBondOptions()
+    {
+        return [
+            self::BOND_METAL => 'Metal',
+            self::BOND_DIAMOND => 'Diamond',
+        ];
+    }
+
+    public static function getBuildProductOptions()
+    {
+        return [
+            self::BUILD_PRODUCT_JEWELRY => 'Jewelry',
+            self::BUILD_PRODUCT_BUILD => 'Build Product',
+            self::BUILD_PRODUCT_WEDDING => 'Wedding',
+            self::BUILD_PRODUCT_GIFTS => 'Gifts',
+            self::BUILD_PRODUCT_SALE => 'Sale',
+        ];
+    }
+
+    public function isBuildProduct()
+    {
+        return $this->is_build_product === self::BUILD_PRODUCT_BUILD;
+    }
 
     public function variations()
     {

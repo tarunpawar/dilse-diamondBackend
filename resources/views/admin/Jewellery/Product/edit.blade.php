@@ -319,18 +319,39 @@
                                                 <div class="error-message" id="error-products_slug"></div>
                                             </div>
 
-                                            <!-- Build Product -->
+                                            <!-- Build Product Section Update -->
                                             <div class="col-md-6 mb-3">
-                                                <label class="form-label">Build Product *</label>
+                                                <label class="form-label">Build Product Type *</label>
                                                 <div>
                                                     <select name="is_build_product" class="form-select" required id="is_build_product">
-                                                        <option disabled value="" {{ old('is_build_product', $product->is_build_product ?? '') === '' ? 'selected' : '' }}>
-                                                            Select Build Product
-                                                        </option>
-                                                        <option value="1" {{ old('is_build_product', $product->is_build_product ?? '') == '1' ? 'selected' : '' }}>Yes</option>
-                                                        <option value="0" {{ old('is_build_product', $product->is_build_product ?? '') == '0' ? 'selected' : '' }}>No</option>
+                                                        <option value="" selected disabled>Select Build Product Type</option>
+                                                        @foreach($buildProductOptions as $value => $label)
+                                                            <option value="{{ $value }}" {{ old('is_build_product', $product->is_build_product ?? '') == $value ? 'selected' : '' }}>
+                                                                {{ $label }}
+                                                            </option>
+                                                        @endforeach
                                                     </select>
+                                                    <div class="error-message" id="error-is_build_product"></div>
                                                 </div>
+                                            </div>
+
+                                            <!-- Edit view mein same fields add karen -->
+                                            <div class="col-md-6 mb-3 wedding-field" style="display: none;">
+                                                <label class="form-label">Gender *</label>
+                                                <select name="gender" class="form-select">
+                                                    <option value="0" {{ old('gender', $product->gender ?? '0') == '0' ? 'selected' : '' }}>Man</option>
+                                                    <option value="1" {{ old('gender', $product->gender ?? '0') == '1' ? 'selected' : '' }}>Woman</option>
+                                                </select>
+                                                <div class="error-message" id="error-gender"></div>
+                                            </div>
+
+                                            <div class="col-md-6 mb-3 wedding-field" style="display: none;">
+                                                <label class="form-label">Bond *</label>
+                                                <select name="bond" class="form-select">
+                                                    <option value="0" {{ old('bond', $product->bond ?? '0') == '0' ? 'selected' : '' }}>Metal</option>
+                                                    <option value="1" {{ old('bond', $product->bond ?? '0') == '1' ? 'selected' : '' }}>Diamond</option>
+                                                </select>
+                                                <div class="error-message" id="error-bond"></div>
                                             </div>
 
                                             <!-- Product Category -->
@@ -357,17 +378,25 @@
                                             </div>
 
                                             <!-- Style Category -->
-                                            <div class="col-md-6 mb-3 build-field">
+                                            <div class="col-md-6 mb-3 build-field" id="styleCategoryWrapper" style="{{ old('is_build_product', $product->is_build_product) == 1 ? '' : 'display:none;' }}">
                                                 <label class="form-label">Style Category *</label>
                                                 <select id="psc_id" name="psc_id" class="form-select">
                                                     <option value="">Select Style Category</option>
-                                                    @foreach($styleCategories as $id => $name)
-                                                        <option value="{{ $id }}" {{ old('psc_id', $product->psc_id ?? '') == $id ? 'selected' : '' }}>
+                                                    @foreach($styleCategories as $key => $name)
+                                                        <option value="{{ $key }}" {{ $key == $initialPscId ? 'selected' : '' }}>{{ $name }}>
                                                             {{ $name }}
                                                         </option>
                                                     @endforeach
                                                 </select>
                                             </div>
+                                            {{-- <div id="styleCategoryWrapper" style="{{ old('is_build_product', $product->is_build_product) == 1 ? '' : 'display:none;' }}">
+    <select name="psc_id" class="form-control">
+        @foreach($styleCategories as $key => $name)
+            <option value="{{ $key }}" {{ $key == $initialPscId ? 'selected' : '' }}>{{ $name }}</option>
+        @endforeach
+    </select>
+</div> --}}
+
 
                                             <!-- Product Collection -->
                                             <div class="col-md-6 mb-3 non-build-field">
@@ -584,9 +613,10 @@
                                                         <th>Metal Type*</th>
                                                         <th>Shape*</th>
                                                         <th>Carat Weight*</th>
-                                                        <th>Price(₹)*</th>
-                                                        <th>Regular Price(₹)*</th>
+                                                        <th>Price*</th>
+                                                        <th>Regular Price*</th>
                                                         <th>Stock</th>
+                                                        <th>Best Selling</th>
                                                         <th>Images</th> 
                                                         <th>Video</th>                                                       
                                                         <th>Actions</th>
@@ -650,6 +680,11 @@
                                                                 value="{{ old("variations.$i.stock", $variation->stock) }}"
                                                                 placeholder="0">
                                                             <div class="error-message" id="error-variations-{{ $i }}-stock"></div>
+                                                        </td>
+
+                                                        <td>
+                                                            <input type="checkbox" name="variations[{{ $i }}][is_best_selling]" value="1" 
+                                                                {{ $variation->is_best_selling ? 'checked' : '' }}>
                                                         </td>
                                                         <!-- Inside variations table cell for images -->
                                                         <td class="variation-image-cell" id="variation-images-{{ $i }}">
@@ -999,6 +1034,9 @@
                     <td>
                         <input type="number" name="variations[${variationCount}][stock]" class="form-control" value="0" placeholder="0">
                         <div class="error-message" id="error-variations-${variationCount}-stock"></div>
+                    </td>
+                    <td>
+                        <input type="checkbox" name="variations[${variationCount}][is_best_selling]" value="1">
                     </td>
                     <td class="variation-image-cell" id="variation-images-${variationCount}">
                         <div class="d-flex flex-wrap gap-2"></div>
@@ -1405,25 +1443,6 @@
             $('#categories_id').trigger('change');
         }
     });
-     function toggleBuildFields() {
-        const value = $('select[name="is_build_product"]').val();
-
-        if (value === '1') {
-            $('.non-build-field').hide();
-            $('.build-field').show();
-        } else if (value === '0') {
-            $('.non-build-field').show();
-            $('.build-field').show();
-        } else {
-            $('.non-build-field').hide();
-            $('.build-field').hide();
-        }
-    }
-
-    $(document).ready(function () {
-        toggleBuildFields();
-        $('select[name="is_build_product"]').change(toggleBuildFields);
-    });
     
 
     // Remove existing video
@@ -1456,5 +1475,88 @@
             }
         }
     });
+
+    $('select[name="is_build_product"]').on('change', function() {
+    if ($(this).val() == '1') {
+        $('#styleCategoryWrapper').show();
+    } else {
+        $('#styleCategoryWrapper').hide();
+    }
+});
+    function toggleBuildFields() {
+        const isBuild = $('select[name="is_build_product"]').val();
+        
+        // Only show build fields for Build Product (1), show non-build for others
+        if (isBuild === '1') {
+            $('.non-build-field').hide();
+            $('.build-field').show();
+        } else {
+            $('.non-build-field').show();
+            $('.build-field').hide();
+        }
+    }
+
+    $(document).ready(function () {
+        toggleBuildFields();
+        $('select[name="is_build_product"]').change(toggleBuildFields);
+    });
+
+    function toggleWeddingFields() {
+    const isBuild = $('#is_build_product').val();
+    
+    if (isBuild === '2') { // 2 = Wedding
+        $('.wedding-field').show();
+        // Make gender and bond required
+        $('select[name="gender"]').prop('required', true);
+        $('select[name="bond"]').prop('required', true);
+    } else {
+        $('.wedding-field').hide();
+        // Remove required attribute
+        $('select[name="gender"]').prop('required', false);
+        $('select[name="bond"]').prop('required', false);
+    }
+}
+
+function toggleBuildFields() {
+    const isBuild = $('select[name="is_build_product"]').val();
+    
+    if (isBuild === '1') { 
+        $('.non-build-field').hide();
+        $('.build-field').show();
+        $('.wedding-field').hide();
+    } else if (isBuild === '2') { 
+        $('.non-build-field').show(); 
+        $('.build-field').hide();
+        $('.wedding-field').show();
+    } else { 
+        $('.non-build-field').show();
+        $('.build-field').hide();
+        $('.wedding-field').hide();
+    }
+}
+
+function toggleWeddingFields() {
+    const isBuild = $('#is_build_product').val();
+    
+    if (isBuild === '2') {
+        $('.wedding-field').show();
+        $('select[name="gender"]').prop('required', true);
+        $('select[name="bond"]').prop('required', true);
+    } else {
+        $('.wedding-field').hide();
+        $('select[name="gender"]').prop('required', false);
+        $('select[name="bond"]').prop('required', false);
+    }
+}
+
+$(document).ready(function () {
+    toggleBuildFields();
+    toggleWeddingFields();
+    
+    $('select[name="is_build_product"]').change(function() {
+        toggleBuildFields();
+        toggleWeddingFields();
+    });
+});
     </script>
 @endsection

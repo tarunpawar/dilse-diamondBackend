@@ -26,6 +26,7 @@ class ProductVariation extends Model
         'metal_color_id', 
         'vendor_id',
         'parent_category_id',
+        'is_best_selling',
     ];
     
     protected $casts = [
