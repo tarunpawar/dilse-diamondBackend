@@ -6,7 +6,7 @@
             <div class="card-header d-flex justify-content-between">
                 <h4 class="mb-3">Diamond Vendor Master</h4>
                 <button class="btn btn-primary btn-sm" data-bs-toggle="modal" data-bs-target="#vendorModal" id="addvendorBtn">
-                    Add New
+                    Add New Vendor
                 </button>
             </div>
 
@@ -33,30 +33,49 @@
         </div>
     </div>
 
-    <!-- Modal -->
+    <!-- Delete Confirmation Modal -->
+    <div class="modal fade" id="deleteModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Confirm Delete</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <p>Are you sure you want to delete this vendor? This action cannot be undone.</p>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="button" class="btn btn-danger" id="confirmDelete">Delete</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Vendor Modal -->
     <div class="modal fade" id="vendorModal" tabindex="-1" aria-labelledby="vendorModalLabel" aria-hidden="true">
         <div class="modal-dialog modal-xl">
-            <form id="vendorForm">
-                @csrf
-                <input type="hidden" id="record_id" name="id">
+            <div class="modal-content">
+                <form id="vendorForm">
+                    @csrf
+                    <input type="hidden" id="record_id" name="id">
 
-                <div class="modal-content">
                     <div class="modal-header">
-                        <h5 class="modal-title">Vendor Details</h5>
-                        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                        <h5 class="modal-title" id="modalTitle">Add New Vendor</h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                     </div>
 
                     <div class="modal-body row g-3">
                         @php
                             $fields = [
-                                ['vendor_company_name', 'Company Name'],
-                                ['vendor_name', 'Vendor Name'],
-                                ['diamond_prefix', 'Diamond Prefix'],
+                                ['vendor_company_name', 'Company Name', 'text'],
+                                ['vendor_name', 'Vendor Name', 'text'],
+                                ['diamond_prefix', 'Diamond Prefix', 'text'],
                                 ['vendor_email', 'Email', 'email'],
-                                ['vendor_phone', 'Phone'],
-                                ['vendor_cell', 'Cell'],
-                                ['how_hear_about_us', 'How did you hear about us?'],
-                                ['other_manufacturer_value', 'Other Manufacturer Value'],
+                                ['vendor_phone', 'Phone', 'text'],
+                                ['vendor_cell', 'Cell', 'text'],
+                                ['how_hear_about_us', 'How did you hear about us?', 'text'],
+                                ['other_manufacturer_value', 'Other Manufacturer Value', 'text'],
                                 ['vendor_status', 'Status', 'select', ['1' => 'Active', '0' => 'Inactive']],
                                 ['auto_status', 'Auto Status', 'select', ['1' => 'Yes', '0' => 'No']],
                                 ['price_markup_type', 'Markup Type', 'select', ['1' => 'Percentage', '2' => 'Fixed']],
@@ -64,47 +83,27 @@
                                 ['fancy_price_markup_value', 'Fancy Markup', 'number'],
                                 ['extra_markup', 'Extra Markup', 'select', ['1' => 'Yes', '0' => 'No']],
                                 ['extra_markup_value', 'Extra Markup Value', 'number'],
-                                [
-                                    'fancy_extra_markup',
-                                    'Fancy Fancy Extra Markup',
-                                    'select',
-                                    ['1' => 'Yes', '0' => 'No'],
-                                ],
+                                ['fancy_extra_markup', 'Fancy Extra Markup', 'select', ['1' => 'Yes', '0' => 'No']],
                                 ['fancy_extra_markup_value', 'Fancy Extra Markup Value', 'number'],
-                                ['delivery_days', 'Delivery Days'],
-                                ['additional_shipping_day', 'Additional Shipping Day'],
-                                ['additional_rap_discount', 'Additional RAP Discount'],
+                                ['delivery_days', 'Delivery Days', 'text'],
+                                ['additional_shipping_day', 'Additional Shipping Day', 'text'],
+                                ['additional_rap_discount', 'Additional RAP Discount', 'text'],
                                 ['notification_email', 'Notification Email', 'email'],
-                                ['data_path', 'Data Path'],
-                                ['media_path', 'Media Path'],
+                                ['data_path', 'Data Path', 'text'],
+                                ['media_path', 'Media Path', 'text'],
                                 ['external_image', 'Use External Image', 'select', ['1' => 'Yes', '0' => 'No']],
-                                ['external_image_path', 'External Image Path'],
+                                ['external_image_path', 'External Image Path', 'text'],
                                 ['external_image_formula', 'External Image Formula', 'textarea'],
                                 ['external_video', 'Use External Video', 'select', ['1' => 'Yes', '0' => 'No']],
-                                ['external_video_path', 'External Video Path'],
+                                ['external_video_path', 'External Video Path', 'text'],
                                 ['external_video_formula', 'External Video Formula', 'textarea'],
-                                [
-                                    'external_certificate',
-                                    'Use External Certificate',
-                                    'select',
-                                    ['1' => 'Yes', '0' => 'No'],
-                                ],
-                                ['external_certificate_path', 'Certificate Path'],
-                                [
-                                    'if_display_vendor_stock_no',
-                                    'Display Vendor Stock No',
-                                    'select',
-                                    ['1' => 'Yes', '0' => 'No'],
-                                ],
-                                ['vm_diamond_type', 'Diamond Type'],
+                                ['external_certificate', 'Use External Certificate', 'select', ['1' => 'Yes', '0' => 'No']],
+                                ['external_certificate_path', 'Certificate Path', 'text'],
+                                ['if_display_vendor_stock_no', 'Display Vendor Stock No', 'select', ['1' => 'Yes', '0' => 'No']],
+                                ['vm_diamond_type', 'Diamond Type', 'text'],
                                 ['show_price', 'Show Price', 'select', ['1' => 'Yes', '0' => 'No']],
                                 ['duplicate_feed', 'Duplicate Feed', 'select', ['1' => 'Yes', '0' => 'No']],
-                                [
-                                    'display_invtry_before_login',
-                                    'Display Inventory Before Login',
-                                    'select',
-                                    ['1' => 'Yes', '0' => 'No'],
-                                ],
+                                ['display_invtry_before_login', 'Display Inventory Before Login', 'select', ['1' => 'Yes', '0' => 'No']],
                                 ['vendor_product_group', 'Vendor Product Group', 'textarea'],
                                 ['vendor_customer_group', 'Vendor Customer Group', 'textarea'],
                                 ['deleted', 'Deleted', 'select', ['1' => 'Yes', '0' => 'No']],
@@ -113,14 +112,14 @@
                                 ['buy_email', 'Buy Email', 'select', ['1' => 'Yes', '0' => 'No']],
                                 ['price_grid', 'Price Grid', 'select', ['1' => 'Yes', '0' => 'No']],
                                 ['display_certificate', 'Display Certificate', 'select', ['1' => 'Yes', '0' => 'No']],
-                                ['change_status_days', 'Change Status Days'],
+                                ['change_status_days', 'Change Status Days', 'text'],
                                 ['diamond_size_from', 'Diamond Size From', 'number'],
                                 ['diamond_size_to', 'Diamond Size To', 'number'],
-                                ['allow_color', 'Allow Color'],
-                                ['location', 'Location'],
-                                ['offer_days', 'Offer Days'],
+                                ['allow_color', 'Allow Color', 'text'],
+                                ['location', 'Location', 'text'],
+                                ['offer_days', 'Offer Days', 'text'],
                                 ['keep_price_same_ab', 'Keep Price Same for AB', 'select', ['1' => 'Yes', '0' => 'No']],
-                                ['cc_fee', 'CC Fee', 'select', ['1' => 'Yes', '0' => 'No']],                          
+                                ['cc_fee', 'CC Fee', 'select', ['1' => 'Yes', '0' => 'No']],
                             ];
                         @endphp
 
@@ -130,6 +129,16 @@
                                 $label = $field[1];
                                 $type = $field[2] ?? 'text';
                                 $options = $field[3] ?? [];
+                                
+                                // Set default values
+                                $defaultValue = '';
+                                if (in_array($name, ['vendor_status', 'auto_status', 'external_image', 'external_video', 'external_certificate', 'if_display_vendor_stock_no', 'show_price', 'duplicate_feed', 'display_invtry_before_login', 'deleted', 'buying', 'buy_email', 'price_grid', 'display_certificate', 'keep_price_same_ab', 'cc_fee', 'extra_markup', 'fancy_extra_markup'])) {
+                                    $defaultValue = '0';
+                                } elseif (in_array($name, ['price_markup_type'])) {
+                                    $defaultValue = '1';
+                                } elseif (in_array($name, ['rank', 'price_markup_value', 'fancy_price_markup_value', 'extra_markup_value', 'fancy_extra_markup_value', 'diamond_size_from', 'diamond_size_to'])) {
+                                    $defaultValue = '0';
+                                }
                             @endphp
 
                             <div class="col-md-4">
@@ -139,17 +148,20 @@
                                     <select class="form-select" id="{{ $name }}" name="{{ $name }}">
                                         <option value="">-- Select --</option>
                                         @foreach ($options as $val => $option)
-                                            <option value="{{ $val }}">{{ $option }}</option>
+                                            <option value="{{ $val }}" {{ $defaultValue == $val ? 'selected' : '' }}>
+                                                {{ $option }}
+                                            </option>
                                         @endforeach
                                     </select>
+                                @elseif ($type === 'textarea')
+                                    <textarea class="form-control" id="{{ $name }}" name="{{ $name }}" rows="2">{{ old($name, $defaultValue) }}</textarea>
                                 @else
                                     <input type="{{ $type }}" class="form-control" id="{{ $name }}"
-                                        name="{{ $name }}" value="{{ old($name) }}">
+                                        name="{{ $name }}" value="{{ old($name, $defaultValue) }}"
+                                        step="{{ $type === 'number' ? '0.01' : '' }}">
                                 @endif
 
-                                @error($name)
-                                    <small class="text-danger">{{ $message }}</small>
-                                @enderror
+                                <small class="text-danger error-{{ $name }}" style="display: none;"></small>
                             </div>
                         @endforeach
 
@@ -157,210 +169,298 @@
                     </div>
 
                     <div class="modal-footer">
-                        <button type="submit" class="btn btn-primary me-2" id="savevendorBtn">Save</button>
+                        <button type="submit" class="btn btn-primary me-2" id="savevendorBtn">Save Vendor</button>
                         <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
                     </div>
-                </div>
-            </form>
+                </form>
+            </div>
         </div>
     </div>
 
-    <script>
-        function formatDateForInput(dateString) {
-            if (!dateString) return "";
-            let dt = new Date(dateString);
-            let year = dt.getFullYear();
-            let month = ("0" + (dt.getMonth() + 1)).slice(-2);
-            let day = ("0" + dt.getDate()).slice(-2);
-            let hours = ("0" + dt.getHours()).slice(-2);
-            let minutes = ("0" + dt.getMinutes()).slice(-2);
-            return `${year}-${month}-${day}T${hours}:${minutes}`;
+    <style>
+        .is-invalid {
+            border-color: #dc3545 !important;
         }
+        .text-danger {
+            font-size: 0.875em;
+            margin-top: 0.25rem;
+        }
+    </style>
 
-        $(document).ready(function() {
-            fetchRecords();
+    <script>
+    // Define fields array in JavaScript scope
+    const fields = @json($fields);
 
-            function fetchRecords() {
-                $.get("{{ route('vendor.index') }}", function(response) {
-                    let rows = '';
-                    response.forEach(r => {
-                        rows += `
-                            <tr>
-                                <td>${r.vendorid}</td>
-                                <td>${r.vendor_company_name ?? ''}</td>
-                                <td>${r.vendor_name ?? ''}</td>
-                                 <td>${r.vendor_email ?? ''}</td>
-                                  <td>${r.vendor_phone ?? ''}</td>
-                                <td>
-                        <input type="checkbox" ${r.vendor_status == 1 ? 'checked' : ''} class="status" data-id="${r.vendorid}">
-                    </td>
-                            <td>${r.date_addded ? r.date_addded.substring(0, 10) : ''}</td>
-                                <td>${r.date_updated ? r.date_updated.substring(0, 10) : ''}</td>
-                                <td>
-                                    <button class="btn btn-sm btn-info editBtn" data-id="${r.vendorid}"><i class="fa fa-edit"></i></button>
-                                    <button class="btn btn-sm btn-danger deleteBtn" data-id="${r.vendorid}"><i class="fa fa-trash"></i></button>
-                                </td>
-                            </tr>
+    $(document).ready(function() {
+        let deleteId = null;
+        let $currentRow = null;
+
+        // Initialize DataTable
+        let dataTable = $('#vendorTable').DataTable({
+            processing: true,
+            serverSide: false,
+            pageLength: 10,
+            ordering: true,
+            ajax: {
+                url: "{{ route('vendor.index') }}",
+                dataSrc: ''
+            },
+            columns: [
+                { data: 'vendorid' },
+                { data: 'vendor_company_name' },
+                { data: 'vendor_name' },
+                { data: 'vendor_email' },
+                { data: 'vendor_phone' },
+                { 
+                    data: null,
+                    render: function(data, type, row) {
+                        return `<input type="checkbox" ${row.vendor_status == 1 ? 'checked' : ''} class="status" data-id="${row.vendorid}">`;
+                    }
+                },
+                { 
+                    data: 'date_addded',
+                    render: function(data) {
+                        return data ? data.substring(0, 10) : '';
+                    }
+                },
+                { 
+                    data: 'date_updated',
+                    render: function(data) {
+                        return data ? data.substring(0, 10) : '';
+                    }
+                },
+                {
+                    data: null,
+                    render: function(data, type, row) {
+                        return `
+                            <button class="btn btn-sm btn-info editBtn" data-id="${row.vendorid}"><i class="fa fa-edit"></i></button>
+                            <button class="btn btn-sm btn-danger deleteBtn" data-id="${row.vendorid}"><i class="fa fa-trash"></i></button>
                         `;
-                    });
-                    renderDataTable('vendorTable', rows);
-                });
-            }
+                    }
+                }
+            ]
+        });
 
-            $('#addvendorBtn').on('click', function() {
-                $('#vendorForm')[0].reset();
-                $('#record_id').val('');
-                $('#formError').text('');
-                $('#savevendorBtn').text('Save');
+        // Add New Vendor Button
+        $('#addvendorBtn').on('click', function() {
+            $('#vendorForm')[0].reset();
+            $('#record_id').val('');
+            $('#formError').text('');
+            $('#modalTitle').text('Add New Vendor');
+            $('#savevendorBtn').text('Save Vendor');
+            
+            // Reset all error messages and classes
+            $('.form-control, .form-select').removeClass('is-invalid');
+            $('.text-danger').hide();
+            
+            // Set default values
+            fields.forEach(field => {
+                const name = field[0];
+                const type = field[2] || 'text';
+                let defaultValue = '';
+                
+                if (['vendor_status', 'auto_status', 'external_image', 'external_video', 'external_certificate', 'if_display_vendor_stock_no', 'show_price', 'duplicate_feed', 'display_invtry_before_login', 'deleted', 'buying', 'buy_email', 'price_grid', 'display_certificate', 'keep_price_same_ab', 'cc_fee', 'extra_markup', 'fancy_extra_markup'].includes(name)) {
+                    defaultValue = '0';
+                } else if (name === 'price_markup_type') {
+                    defaultValue = '1';
+                } else if (['rank', 'price_markup_value', 'fancy_price_markup_value', 'extra_markup_value', 'fancy_extra_markup_value', 'diamond_size_from', 'diamond_size_to'].includes(name)) {
+                    defaultValue = '0';
+                }
+                
+                if (type === 'select') {
+                    $(`#${name}`).val(defaultValue);
+                } else {
+                    $(`#${name}`).val(defaultValue);
+                }
             });
+        });
 
-            $(document).on('click', '.editBtn', function() {
-                let id = $(this).data('id');
-                console.log(id);
-                $.get("{{ url('admin/vendor') }}/" + id, function(data) {
+        // Edit Vendor
+        $(document).on('click', '.editBtn', function() {
+            let id = $(this).data('id');
+            
+            $.ajax({
+                url: "{{ url('admin/vendor') }}/" + id,
+                type: 'GET',
+                success: function(data) {
                     $('#vendorForm')[0].reset();
                     $('#formError').text('');
                     $('#record_id').val(data.vendorid);
+                    $('#modalTitle').text('Edit Vendor');
+                    $('#savevendorBtn').text('Update Vendor');
 
-                    @foreach ($fields as $field)
-                        @php
-                            $name = $field[0];
-                            $type = $field[2] ?? 'text';
-                        @endphp
+                    // Reset all error messages and classes
+                    $('.form-control, .form-select').removeClass('is-invalid');
+                    $('.text-danger').hide();
 
-                        @if ($type === 'datetime-local')
-                            if (data['{{ $name }}']) {
-                                $('#{{ $name }}').val(formatDateForInput(data[
-                                    '{{ $name }}']));
-                            }
-                        @else
-                            $('#{{ $name }}').val(data['{{ $name }}'] ?? '');
-                        @endif
-                    @endforeach
-
-                    $('#vendorModal').modal('show');
-                    $('#savevendorBtn').text('Update');
-                });
-            });
-
-            $(document).ready(function() {
-                let deleteId = null;
-                let $currentRow = null;
-
-                $(document).on('click', '.deleteBtn', function() {
-
-                    deleteId = $(this).data('id');
-                    $currentRow = $(this).closest('tr');
-                    $('.popup-modal.remove-modal').fadeIn(); // Show the modal
-                });
-
-                // Close modal on No or overlay click
-                $(document).on('click', '.close-pop', function() {
-                    $('.popup-modal.remove-modal').fadeOut(); // Hide the modal
-                });
-
-                // Confirm delete
-                $('#confirmDelete').on('click', function() {
-                    if (!deleteId) return;
-
-                    $.ajax({
-                        url: `/api/admin/vendor/${deleteId}`,
-                        type: 'POST',
-                        data: {
-                            _token: '{{ csrf_token() }}',
-                            _method: 'DELETE'
-                        },
-                        dataType: 'json',
-                        success: function(response) {
-                            if (response.success) {
-                                $currentRow.remove();
-                                toastr.success(response.message);
-                                setTimeout(() => {
-                                    location.reload();
-                                }, 1000);
+                    // Populate form fields
+                    fields.forEach(field => {
+                        const name = field[0];
+                        const type = field[2] || 'text';
+                        const value = data[name];
+                        
+                        if (value !== null && value !== undefined) {
+                            if (type === 'select') {
+                                $(`#${name}`).val(value.toString());
                             } else {
-                                toastr.error("Unexpected server response.");
+                                $(`#${name}`).val(value);
                             }
-                            $('.popup-modal.remove-modal').fadeOut(); // Close the modal
-                        },
-                        error: function(xhr) {
-                            toastr.error("Failed to delete the record.");
-                            $('.popup-modal.remove-modal').fadeOut(); // Close the modal
                         }
                     });
-                });
+
+                    // Show modal
+                    const vendorModal = new bootstrap.Modal(document.getElementById('vendorModal'));
+                    vendorModal.show();
+                },
+                error: function() {
+                    toastr.error('Failed to load vendor data!');
+                }
             });
-            $('#vendorForm').submit(function(e) {
-                e.preventDefault();
-                const id = $('#record_id').val();
-
-                const method = id ? 'PUT' : 'POST';
-                const url = id ?
-                    `{{ url('admin/vendor') }}/${id}` :
-                    "{{ route('vendor.store') }}";
-                let formData = $(this).serialize();
-                formData += `&_method=${method}`;
-                $.ajax({
-                    url: url,
-                    type: 'POST',
-                    data: formData,
-                    success: function() {
-                        $('#vendorModal').modal('hide');
-                        fetchRecords();
-                        toastr.success("Record saved successfully!");
-                    },
-                    error: function(xhr) {
-                        let errors = xhr.responseJSON?.errors || {};
-                        let msg = Object.values(errors).join('<br>');
-                        $('#formError').html(msg || 'An error occurred');
-                        toastr.error("Failed to save record!");
-                    }
-                });
-            });
-            $(document).on('change', '.status', function() {
-                const id = $(this).data('id');
-                const status = $(this).prop('checked') ? 1 : 0;
-
-                $.ajax({
-                    url: `{{ url('admin/vendor') }}/${id}`,
-                    type: 'POST',
-                    data: {
-                        _token: '{{ csrf_token() }}',
-                        _method: 'PUT',
-                        vendor_status: status
-                    },
-                    success: function() {
-                        toastr.success('Status updated successfully!');
-                    },
-                    error: function() {
-                        toastr.error('Failed to update Status!');
-                    }
-                });
-            });
-
-
-            $(document).on('blur', '.sort-order', function() {
-                const id = $(this).data('id');
-                const sortOrder = $(this).val();
-
-                $.ajax({
-                    url: `{{ url('admin/vendor') }}/${id}`,
-                    type: 'POST',
-                    data: {
-                        _token: '{{ csrf_token() }}',
-                        _method: 'PUT',
-                        sort_order: sortOrder
-                    },
-                    success: function() {
-                        toastr.success('Sort order updated successfully!');
-                    },
-                    error: function() {
-                        toastr.error('Failed to update sort order!');
-                    }
-                });
-            });
-
-
         });
-    </script>
+
+        // Delete Vendor
+        $(document).on('click', '.deleteBtn', function() {
+            deleteId = $(this).data('id');
+            $currentRow = $(this).closest('tr');
+            
+            const deleteModal = new bootstrap.Modal(document.getElementById('deleteModal'));
+            deleteModal.show();
+        });
+
+        // Confirm Delete
+        $('#confirmDelete').on('click', function() {
+            if (!deleteId) return;
+
+            $.ajax({
+                url: `{{ url('admin/vendor') }}/${deleteId}`,
+                type: 'POST',
+                data: {
+                    _token: '{{ csrf_token() }}',
+                    _method: 'DELETE'
+                },
+                success: function(response) {
+                    if (response.success) {
+                        dataTable.ajax.reload();
+                        toastr.success(response.message);
+                        
+                        // Close delete modal
+                        const deleteModal = bootstrap.Modal.getInstance(document.getElementById('deleteModal'));
+                        deleteModal.hide();
+                    } else {
+                        toastr.error("Unexpected server response.");
+                    }
+                },
+                error: function(xhr) {
+                    toastr.error("Failed to delete the record.");
+                }
+            });
+        });
+
+        // Form submission
+        $('#vendorForm').submit(function(e) {
+            e.preventDefault();
+            const id = $('#record_id').val();
+
+            // Reset previous errors
+            $('.form-control, .form-select').removeClass('is-invalid');
+            $('.text-danger').hide();
+            $('#formError').text('');
+
+            const method = id ? 'PUT' : 'POST';
+            const url = id ? 
+                `{{ url('admin/vendor') }}/${id}` : 
+                "{{ route('vendor.store') }}";
+            
+            let formData = $(this).serialize();
+            
+            // Show loading state
+            $('#savevendorBtn').prop('disabled', true).html('<i class="fa fa-spinner fa-spin"></i> Saving...');
+
+            $.ajax({
+                url: url,
+                type: 'POST',
+                data: formData + `&_method=${method}`,
+                success: function(response) {
+                    // Close modal
+                    const vendorModal = bootstrap.Modal.getInstance(document.getElementById('vendorModal'));
+                    vendorModal.hide();
+                    
+                    // Reload DataTable
+                    dataTable.ajax.reload();
+                    
+                    toastr.success("Vendor saved successfully!");
+                    $('#savevendorBtn').prop('disabled', false).html(id ? 'Update Vendor' : 'Save Vendor');
+                },
+                error: function(xhr) {
+                    $('#savevendorBtn').prop('disabled', false).html(id ? 'Update Vendor' : 'Save Vendor');
+                    
+                    if (xhr.status === 422) {
+                        let errors = xhr.responseJSON.errors || {};
+                        
+                        // Display field-specific errors
+                        $.each(errors, function(field, messages) {
+                            let errorElement = $(`.error-${field}`);
+                            let inputElement = $(`[name="${field}"]`);
+                            
+                            if (errorElement.length && inputElement.length) {
+                                errorElement.text(messages[0]).show();
+                                inputElement.addClass('is-invalid');
+                            }
+                        });
+                        
+                        // Show general errors
+                        if (Object.keys(errors).length > 0) {
+                            $('#formError').html('Please fix the validation errors above.');
+                        }
+                    } else {
+                        $('#formError').html('An error occurred while saving the vendor.');
+                    }
+                    
+                    toastr.error("Failed to save vendor!");
+                }
+            });
+        });
+
+        // Remove error when user starts typing
+        $('.form-control, .form-select').on('input change', function() {
+            const fieldName = $(this).attr('name');
+            $(this).removeClass('is-invalid');
+            $(`.error-${fieldName}`).hide();
+        });
+
+        // Status update - ONLY send vendor_status
+        $(document).on('change', '.status', function() {
+            const id = $(this).data('id');
+            const status = $(this).prop('checked') ? 1 : 0;
+            const $checkbox = $(this);
+
+            $.ajax({
+                url: `{{ url('admin/vendor') }}/${id}`,
+                type: 'POST',
+                data: {
+                    _token: '{{ csrf_token() }}',
+                    _method: 'PUT',
+                    vendor_status: status
+                    // ONLY send vendor_status, don't send other fields
+                },
+                success: function(response) {
+                    toastr.success('Status updated successfully!');
+                    dataTable.ajax.reload(); // Reload table to reflect changes
+                },
+                error: function(xhr) {
+                    toastr.error('Failed to update status!');
+                    // Revert checkbox on error
+                    $checkbox.prop('checked', !status);
+                    
+                    // If it's validation error, show specific message
+                    if (xhr.status === 422) {
+                        let errors = xhr.responseJSON.errors || {};
+                        let errorMsg = Object.values(errors).join(', ');
+                        toastr.error('Validation error: ' + errorMsg);
+                    }
+                }
+            });
+        });
+    });
+</script>
 @endsection

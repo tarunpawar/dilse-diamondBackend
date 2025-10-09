@@ -91,7 +91,7 @@
         </li>
         <li class="menu-item {{ request()->is('product*') || request()->is('category*') || request()->is('metaltype*') ? 'active open' : '' }}">
             <a href="javascript:void(0);" class="menu-link menu-toggle">
-                <i class="menu-icon fa fa-ring"></i>
+                <i class="fa fa-ring"></i>
                 <div class="text-truncate"> Jewellery</div>
             </a>
             <ul class="menu-sub">
@@ -137,7 +137,7 @@
         <!-- Coupon -->
         <li class="menu-item {{ request()->routeIs('admin.coupons.index') ? 'active' : '' }}">
             <a href="{{ route('admin.coupons.index') }}" class="menu-link">
-                <i class="menu-icon tf-icons bx bx-purchase-tag-alt"></i>
+                <i class="menu-icon tf-icons bx bx-coupon"></i>
                 <div class="text-truncate">Coupon</div>
             </a>
         </li>
@@ -149,15 +149,6 @@
                 <div class="text-truncate">Orders</div>
             </a>
         </li>
-
-        <!-- ORDERS -->
-        <li class="menu-item {{ request()->routeIs('metal-prices.index') ? 'active' : '' }}">
-            <a href="{{ route('metal-prices.index') }}" class="menu-link">
-                <i class="menu-icon tf-icons bx bx-coin"></i>
-                <div class="text-truncate">Metal Price</div>
-            </a>
-        </li>
-
 
         <!-- VENDORS -->
         <li class="menu-item {{ request()->routeIs('vendor.index') ? 'active' : '' }}">
