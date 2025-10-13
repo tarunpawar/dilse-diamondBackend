@@ -1,3 +1,10 @@
+<style>
+    #menuSearch {
+        border-radius: 8px;
+        padding: 6px 10px;
+        font-size: 14px;
+    }
+</style>
 <aside id="layout-menu" class="layout-menu menu-vertical menu bg-menu-theme">
     <div class="app-brand demo">
         <a href="index.html" class="app-brand-link">
@@ -8,6 +15,11 @@
         <a href="javascript:void(0);" class="layout-menu-toggle menu-link text-large ms-auto d-block d-xl-none">
             <i class="bx bx-chevron-left bx-sm d-flex align-items-center justify-content-center"></i>
         </a>
+    </div>
+
+    <!-- Search Bar -->
+    <div class="p-3">
+        <input type="text" id="menuSearch" class="form-control form-control-sm" placeholder="Search menu..." />
     </div>
 
     <div class="menu-inner-shadow"></div>
@@ -168,3 +180,58 @@
         </li>
     </ul>
 </aside>
+
+<script>
+    document.addEventListener('DOMContentLoaded', function () {
+        const searchInput = document.getElementById('menuSearch');
+        const allMenuItems = document.querySelectorAll('#layout-menu .menu-item');
+
+        searchInput.addEventListener('keyup', function () {
+            const searchText = this.value.toLowerCase();
+            if (searchText === '') {
+                allMenuItems.forEach(item => {
+                item.style.display = '';
+                item.classList.remove('open');
+                });
+                return;
+            }
+
+            allMenuItems.forEach(item => {
+                const linkText = item.textContent.toLowerCase();
+                const submenu = item.querySelector('.menu-sub');
+                if (submenu) {
+                    const subItems = submenu.querySelectorAll('.menu-item');
+                    let matchFound = false;
+                    subItems.forEach(sub => {
+                        const subText = sub.textContent.toLowerCase();
+                        if (subText.includes(searchText)) {
+                            sub.style.display = '';
+                            matchFound = true;
+                        } else {
+                            sub.style.display = 'none';
+                        }
+                    });
+                    if (matchFound) {
+                        item.style.display = '';
+                        item.classList.add('open');
+                    } else if (linkText.includes(searchText)) {
+                        item.style.display = '';
+                        item.classList.remove('open');
+                        subItems.forEach(sub => sub.style.display = 'none');
+                    } else {
+                        item.style.display = 'none';
+                        item.classList.remove('open');
+                    }
+
+                } else {
+                    if (linkText.includes(searchText)) {
+                        item.style.display = '';
+                    } else {
+                        item.style.display = 'none';
+                    }
+                }
+            });
+        });
+    });
+</script>
+

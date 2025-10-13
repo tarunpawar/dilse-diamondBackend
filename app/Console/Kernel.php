@@ -14,6 +14,9 @@ class Kernel extends ConsoleKernel
     {
         // $schedule->command('inspire')->hourly();
         $schedule->command('import:diamond-data')->dailyAt('08:00');
+        $schedule->command('products:update-prices-from-metal')
+             ->dailyAt('09:00')
+             ->timezone('Asia/Kolkata');
     }
 
     /**

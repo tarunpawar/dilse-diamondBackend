@@ -15,4 +15,9 @@ class MetalType extends Model
         'color_code', 'metal_icon', 'added_by', 'date_added',
         'updated_by', 'date_modified'
     ];
+
+    public function productVariations()
+    {
+        return $this->hasMany(ProductVariation::class, 'metal_color_id', 'dmt_id');
+    }
 }

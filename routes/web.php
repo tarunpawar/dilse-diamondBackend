@@ -53,6 +53,7 @@ use App\Http\Controllers\ProductImportController;
 use App\Http\Controllers\Admin\DashboardController;
 use App\Http\Controllers\Api\PayPalController;
 use App\Http\Controllers\Jewellery\CouponController;
+use App\Http\Controllers\Jewellery\MetalPriceController;
 
 Route::get('/import-products', [ProductImportController::class, 'showForm'])->name('products.import.form');
 Route::post('/import-products', [ProductImportController::class, 'import'])->name('products.import');
@@ -221,13 +222,13 @@ Route::prefix('admin')->middleware(['auth', 'admin'])->group(function () {
         Route::delete('/diamond-fancy-color-intensity/{id}', 'destroy')->name('fancy-color-intensity.destroy');
     });
 
-    Route::controller(DiamondVendorController::class)->group(function () {
-        Route::get('/vendor', 'index')->name('vendor.index');
-        Route::post('/vendor', 'store')->name('vendor.store');
-        Route::get('/vendor/{id}', 'show')->name('vendor.show');
-        Route::put('/vendor/{id}', 'update')->name('vendor.update');
-        Route::delete('/vendor/{id}', 'destroy')->name('vendor.destroy');
-    });
+Route::controller(DiamondVendorController::class)->group(function () {
+    Route::get('/vendor', 'index')->name('vendor.index');
+    Route::post('/vendor', 'store')->name('vendor.store');
+    Route::get('/vendor/{id}', 'show')->name('vendor.show');
+    Route::put('/vendor/{id}', 'update')->name('vendor.update');
+    Route::delete('/vendor/{id}', 'destroy')->name('vendor.destroy');
+});
 
     // Route::controller(DiamondMasterController::class)->group(function(){
     //     Route::get('/diamond-master', 'index')->name('diamond-master.index');
@@ -506,6 +507,16 @@ Route::prefix('admin')->middleware(['auth', 'admin'])->group(function () {
         Route::put('/coupons/{coupon}', [CouponController::class, 'update'])->name('admin.coupons.update');
         Route::delete('/coupons/{coupon}', [CouponController::class, 'destroy'])->name('admin.coupons.destroy');
         Route::post('/coupons/{coupon}/status', [CouponController::class, 'updateStatus'])->name('admin.coupons.status');
+    });
+
+    Route::controller(\App\Http\Controllers\Jewellery\MetalPriceController::class)->group(function(){
+        Route::get('metal-prices',  'index')->name('metal-prices.index');
+        Route::post('metal-prices',  'store')->name('metal-prices.store');
+        Route::get('metal-prices/{id}/edit',  'edit')->name('metal-prices.edit');
+        Route::put('metal-prices/{id}',  'update')->name('metal-prices.update');
+        Route::delete('/destroy/{id}','destroy')->name('metal-prices.destroy');
+        Route::post('/update-products','updateProductPrices')->name('metal-prices.update-products');
+        Route::get('/update-products-form','showPriceUpdateForm')->name('metal-prices.update-products.form');
     });
 
 });

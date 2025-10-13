@@ -68,4 +68,33 @@ class DiamondVendor extends Model
         'date_updated',
         'update_by'
     ];
+
+    protected $casts = [
+        'vendor_status' => 'integer',
+        'auto_status' => 'integer',
+        'price_markup_type' => 'integer',
+        'price_markup_value' => 'decimal:2',
+        'fancy_price_markup_value' => 'decimal:2',
+        'extra_markup' => 'integer',
+        'extra_markup_value' => 'decimal:2',
+        'fancy_extra_markup' => 'integer',
+        'fancy_extra_markup_value' => 'decimal:2',
+        'external_image' => 'integer',
+        'external_video' => 'integer',
+        'external_certificate' => 'integer',
+        'if_display_vendor_stock_no' => 'integer',
+        'show_price' => 'integer',
+        'duplicate_feed' => 'integer',
+        'display_invtry_before_login' => 'integer',
+        'deleted' => 'integer',
+        'rank' => 'integer',
+        'buying' => 'integer',
+        'buy_email' => 'integer',
+        'price_grid' => 'integer',
+        'display_certificate' => 'integer',
+        'diamond_size_from' => 'decimal:2',
+        'diamond_size_to' => 'decimal:2',
+        'keep_price_same_ab' => 'integer',
+        'cc_fee' => 'integer',
+    ];
 }

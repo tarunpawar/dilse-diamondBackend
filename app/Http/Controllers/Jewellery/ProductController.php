@@ -38,9 +38,19 @@ class ProductController extends Controller
     {
         if ($request->ajax()) {
             $products = Product::leftJoin('categories', 'products.categories_id', '=', 'categories.category_id')
-                ->select('products.*', 'categories.category_name')
-                ->orderBy('products.products_id', 'DESC')
-                ->get();
+                ->leftJoin('product_variations', function ($join) {
+                    $join->on('products.products_id', '=', 'product_variations.product_id')
+                        ->whereRaw('product_variations.id = (SELECT id FROM product_variations WHERE product_id = products.products_id LIMIT 1)');
+                })
+                ->select('products.*', 'categories.category_name', 'product_variations.images as variation_images', 'product_variations.sku as variation_sku')
+                ->orderBy('products.products_id', 'DESC');
+
+            // Add SKU filter
+            if ($request->has('sku_filter') && !empty($request->sku_filter)) {
+                $products->where('product_variations.sku', 'like', '%' . $request->sku_filter . '%');
+            }
+
+            $products = $products->get();
 
             return DataTables::of($products)
                 ->addIndexColumn()
@@ -49,6 +59,24 @@ class ProductController extends Controller
                 })
                 ->addColumn('category_name', function ($product) {
                     return $product->category_name ?? 'N/A';
+                })
+                ->addColumn('product_image', function ($product) {
+                    $images = json_decode($product->variation_images, true);
+                    $image = $images[0] ?? null;
+                    if ($image) {
+                        // Check if it's a full URL (from accessor) or just filename
+                        if (filter_var($image, FILTER_VALIDATE_URL)) {
+                            return '<img src="' . $image . '" width="50" height="50" style="object-fit: cover; border-radius: 4px;">';
+                        } else {
+                            return '<img src="' . url('storage/variation_images/' . $image) . '" width="50" height="50" style="object-fit: cover; border-radius: 4px;">';
+                        }
+                    }
+                    return '<div style="width:50px;height:50px;background:#f8f9fa;display:flex;align-items:center;justify-content:center;border-radius:4px;">
+                            <i class="bx bx-image" style="font-size:20px;color:#6c757d;"></i>
+                        </div>';
+                })
+                ->addColumn('sku', function ($product) {
+                    return $product->variation_sku ?? '-';
                 })
                 ->editColumn('products_status', function ($product) {
                     return $product->products_status
@@ -60,7 +88,7 @@ class ProductController extends Controller
                         ? date('d M Y', strtotime($product->date_added))
                         : '';
                 })
-                ->rawColumns(['products_name', 'category_name', 'products_status'])
+                ->rawColumns(['product_image', 'products_status', 'sku', 'products_name', 'category_name'])
                 ->make(true);
         }
 
@@ -166,6 +194,7 @@ class ProductController extends Controller
             )
         );
     }
+
     public function store(Request $request)
     {
         $selectedCategory = $request->categories_id;
@@ -185,6 +214,10 @@ class ProductController extends Controller
         }
 
         $data = $request->all();
+
+        $data['is_sale'] = $request->has('is_sale') ? 1 : 0;
+        $data['is_gift'] = $request->has('is_gift') ? 1 : 0;
+
         $data['added_by'] = Auth::id();
         $data['date_added'] = now();
         $data['date_updated'] = now();
@@ -213,9 +246,10 @@ class ProductController extends Controller
                 if ($request->hasFile("variations.$index.images")) {
                     foreach ($request->file("variations.$index.images") as $image) {
                         if ($image->isValid()) {
+                            // Fix: Store only filename, not full path
                             $filename = 'variation_' . time() . '_' . Str::random(10) . '.' . $image->extension();
                             $image->storeAs('variation_images', $filename, 'public');
-                            $imagePaths[] = $filename;
+                            $imagePaths[] = $filename; // Store only filename
                         }
                     }
                 }
@@ -257,7 +291,7 @@ class ProductController extends Controller
                     'is_best_selling' => $variation['is_best_selling'] ?? 0,
                     'metal_color_id' => $variation['metal_color_id'] ?? null,
                     'shape_id' => $variation['shape_id'] ?? null,
-                    'images' => $imagePaths,
+                    'images' => $imagePaths, // Store array of filenames only
                     'video' => $videoName
                 ]);
             }
@@ -480,6 +514,12 @@ class ProductController extends Controller
         ]);
         $data['updated_by'] = Auth::id();
         $data['date_updated'] = now();
+
+        $data = $request->except(['is_sale', 'is_gift', 'is_featured', 'is_bestseller']);
+
+        $data['is_sale'] = $request->has('is_sale') ? 1 : 0;
+        $data['is_gift'] = $request->has('is_gift') ? 1 : 0;
+
         $product->update($data);
 
         // Update or create variations
@@ -500,11 +540,18 @@ class ProductController extends Controller
                 $imagePaths = [];
                 $videoName = null;
 
-                // Process existing images
+                // Process existing images - fix for filename only
                 if (isset($variation['existing_images'])) {
-                    $imagePaths = is_array($variation['existing_images'])
-                        ? $variation['existing_images']
-                        : [$variation['existing_images']];
+                    if (is_array($variation['existing_images'])) {
+                        $imagePaths = $variation['existing_images'];
+                    } else {
+                        $imagePaths = [$variation['existing_images']];
+                    }
+
+                    // Ensure we're storing only filenames, not full paths
+                    $imagePaths = array_map(function ($image) {
+                        return basename($image); // Extract only filename
+                    }, $imagePaths);
                 }
 
                 // Handle removed images
@@ -512,8 +559,9 @@ class ProductController extends Controller
                     $removedImages = explode(',', $variation['removed_images']);
                     foreach ($removedImages as $img) {
                         if (!empty($img)) {
-                            Storage::disk('public')->delete("variation_images/$img");
-                            $key = array_search($img, $imagePaths);
+                            $filename = basename($img); // Get only filename
+                            Storage::disk('public')->delete("variation_images/$filename");
+                            $key = array_search($filename, $imagePaths);
                             if ($key !== false) {
                                 unset($imagePaths[$key]);
                             }
@@ -522,42 +570,43 @@ class ProductController extends Controller
                     $imagePaths = array_values($imagePaths);
                 }
 
-                // Process new images
+                // Process new images - store only filenames
                 if ($request->hasFile("variations.$index.images")) {
                     foreach ($request->file("variations.$index.images") as $file) {
                         if ($file->isValid()) {
                             $filename = 'variation_' . time() . '_' . Str::random(10) . '.' . $file->extension();
                             $file->storeAs('variation_images', $filename, 'public');
-                            $imagePaths[] = $filename;
+                            $imagePaths[] = $filename; // Store only filename
                         }
                     }
                 }
 
-                // Process video
-                $videoName = null;
-
+                // VIDEO PROCESSING - FIXED CODE
                 if ($request->hasFile("variations.$index.video")) {
                     $video = $request->file("variations.$index.video");
                     if ($video->isValid()) {
                         // Delete old video if exists
-                        if (!empty($variation['existing_video'])) {
-                            Storage::disk('public')->delete("variation_videos/{$variation['existing_video']}");
+                        if (isset($variation['existing_video']) && !empty($variation['existing_video'])) {
+                            $oldVideo = basename($variation['existing_video']);
+                            Storage::disk('public')->delete("variation_videos/$oldVideo");
                         }
 
                         $videoName = 'variation_video_' . time() . '_' . Str::random(10) . '.' . $video->extension();
                         $video->storeAs('variation_videos', $videoName, 'public');
                     }
-                } elseif (isset($variation['existing_video']) && !isset($variation['remove_video'])) {
-                    $videoName = $variation['existing_video'];
+                } else {
+                    // If no new video uploaded, check for existing video
+                    if (isset($variation['existing_video']) && !empty($variation['existing_video'])) {
+                        $videoName = basename($variation['existing_video']);
+                        
+                        // Check if user wants to remove the existing video
+                        if (isset($variation['remove_video']) && $variation['remove_video'] == '1') {
+                            Storage::disk('public')->delete("variation_videos/$videoName");
+                            $videoName = null;
+                        }
+                    }
                 }
 
-                // Handle video removal
-                if (isset($variation['remove_video']) && $variation['remove_video'] == '1') {
-                    if (!empty($variation['existing_video'])) {
-                        Storage::disk('public')->delete("variation_videos/{$variation['existing_video']}");
-                    }
-                    $videoName = null;
-                }
                 // Update existing variation
                 if (isset($variation['id']) && $variation['id'] !== 'new') {
                     $existingVariation = $product->variations()->find($variation['id']);
@@ -570,12 +619,17 @@ class ProductController extends Controller
                             'is_best_selling' => $variation['is_best_selling'] ?? 0,
                             'metal_color_id' => $variation['metal_color_id'] ?? null,
                             'shape_id' => $variation['shape_id'] ?? null,
-                            'images' => $imagePaths,
-                            'video' => $videoName // Always include video field
+                            'images' => $imagePaths, // Store array of filenames only
                         ];
 
-                        $existingVariation->update($variationData);
+                        // Only update video if we have a new value
+                        if ($videoName !== null) {
+                            $variationData['video'] = $videoName;
+                        } elseif (isset($variation['remove_video']) && $variation['remove_video'] == '1') {
+                            $variationData['video'] = null;
+                        }
 
+                        $existingVariation->update($variationData);
                         $usedVariationIds[] = $existingVariation->id;
                         continue;
                     }
@@ -605,7 +659,7 @@ class ProductController extends Controller
                     'stock' => $variation['stock'] ?? 0,
                     'metal_color_id' => $variation['metal_color_id'] ?? null,
                     'shape_id' => $variation['shape_id'] ?? null,
-                    'images' => $imagePaths
+                    'images' => $imagePaths // Store array of filenames only
                 ];
 
                 if ($videoName !== null) {
@@ -624,13 +678,15 @@ class ProductController extends Controller
             if (!empty($variation->images)) {
                 foreach ($variation->images as $imagePath) {
                     if (!empty($imagePath)) {
-                        Storage::disk('public')->delete("variation_images/$imagePath");
+                        $filename = basename($imagePath); // Get only filename
+                        Storage::disk('public')->delete("variation_images/$filename");
                     }
                 }
             }
 
             if (!empty($variation->video)) {
-                Storage::disk('public')->delete("variation_videos/{$variation->video}");
+                $videoFilename = basename($variation->video);
+                Storage::disk('public')->delete("variation_videos/$videoFilename");
             }
 
             $variation->delete();
@@ -687,7 +743,6 @@ class ProductController extends Controller
             ]
         );
 
-
         // Build Product Logic
         if ($request->is_build_product == '1') {
             // Assign style category for build product
@@ -708,7 +763,6 @@ class ProductController extends Controller
             $product->psc_id = null;
             $product->save();
         }
-
 
         return response()->json([
             'redirect' => route('product.index'),
@@ -801,20 +855,20 @@ class ProductController extends Controller
     private function getValidationRules()
     {
         $rules = [
+            'variations'                  => 'required|array|min:1',
             'products_name'               => 'required|string|max:255',
             'products_status'             => 'required|in:0,1',
             'products_slug'               => 'required|string|max:150',
             'vendor_id'                   => 'required|integer',
             'featured_image'              => 'sometimes|image|mimes:jpeg,png,jpg,gif,webp|max:10240',
             'gallery_images.*'            => 'sometimes|image|mimes:jpeg,png,jpg,gif,webp|max:10240',
-            'variations.*.metal_color_id' => 'required|exists:metal_type,dmt_id',
-            'variations.*.weight'         => 'required|numeric|min:0.01',
             'variations.*.price'          => 'required|numeric|min:0',
-            'is_build_product'            => 'required|in:0,1,2,3,4', // Update this line
+            'is_build_product'            => 'required|in:0,1,2,3,4',
             'variations.*.regular_price'  => 'required|numeric|min:0',
             'variations.*.price'          => 'required|numeric|min:0|lte:variations.*.regular_price',
-            'variations.*.shape_id'       => 'required|exists:diamond_shape_master,id',
-            'variations.*.video'          => 'sometimes|mimetypes:video/avi,video/mpeg,video/quicktime,video/mp4|max:51200',
+            'variations.*.video'          => 'sometimes|mimetypes:video/avi,video/mpeg,video/quicktime,video/mp4|max:307200',
+            'is_sale'                     => 'sometimes|boolean',
+            'is_gift'                     => 'sometimes|boolean',
         ];
 
         // Update the condition for build product
@@ -835,6 +889,8 @@ class ProductController extends Controller
     private function getValidationMessages()
     {
         return [
+            'variations.required' => 'At least one product variation is required.',
+            'variations.min' => 'At least one product variation is required.',
             'products_name.required'             => 'Product Name is required.',
             'products_name.string'               => 'Product Name must be a valid string.',
             'products_name.max'                  => 'Product Name may not exceed 255 characters.',
@@ -909,16 +965,12 @@ class ProductController extends Controller
             'default_size.max'                   => 'Default Size may not exceed 10 characters.',
             'deleted.in'                         => 'Deleted must be either 0 (No) or 1 (Yes).',
             'sort_order.integer'                 => 'Sort Order must be an integer.',
-            'variations.*.weight.required'       => 'Weight is required for all variations.',
-            'variations.*.weight.numeric'        => 'Weight must be a numeric value.',
-            'variations.*.weight.min'            => 'Weight must be at least 0.01.',
+
             'variations.*.price.required'        => 'Price is required for all variations.',
             'variations.*.price.required'        => 'Price is required for all variations.',
             'variations.*.regular_price.required' => 'Regular Price is required for all variations.',
             'variations.*.regular_price.numeric' => 'Regular Price must be a numeric value.',
             'variations.*.price.lte' => 'Price must be less than or equal to Regular Price.',
-            'variations.*.shape_id.required' => 'Shape is required for all variations.',
-            'variations.*.metal_color_id.required' => 'Metal color is required for all variations.',
             'variations.*.video.max' => 'The video size cannot exceed 50MB. Please upload a smaller video.',
             'variations.*.video.mimetypes' => 'The video file is in an invalid format. Only AVI, MPEG, QuickTime, or MP4 files are allowed.',
             'is_build_product.required' => 'Build Product type is required.',

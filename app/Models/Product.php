@@ -15,8 +15,8 @@ class Product extends Model
         'products_name',
         'products_description',
         'products_short_description',
-        'gender', 
-        'bond' ,
+        'gender',
+        'bond',
         'available',
         'products_quantity',
         'products_model',
@@ -29,7 +29,7 @@ class Product extends Model
         'products_price4',
         'products_weight',
         'products_status',
-        'engraving_status', 
+        'engraving_status',
         'products_slug',
         'catelog_no',
         'vendor_id',
@@ -88,7 +88,9 @@ class Product extends Model
         'updated_by',
         'date_added',
         'date_updated',
-        'shop_zone_id'
+        'shop_zone_id',
+        'is_sale',
+        'is_gift',
     ];
 
     const BUILD_PRODUCT_JEWELRY = '0';
@@ -104,7 +106,7 @@ class Product extends Model
     const BOND_METAL = '0';
     const BOND_DIAMOND = '1';
 
-     public static function getGenderOptions()
+    public static function getGenderOptions()
     {
         return [
             self::GENDER_MAN => 'Man',
@@ -130,6 +132,17 @@ class Product extends Model
             self::BUILD_PRODUCT_SALE => 'Sale',
         ];
     }
+
+    public function isOnSale()
+    {
+        return $this->is_sale == true;
+    }
+
+    public function isGift()
+    {
+        return $this->is_gift == true;
+    }
+
 
     public function isBuildProduct()
     {
@@ -195,5 +208,4 @@ class Product extends Model
     {
         return $this->belongsTo(ProductCollection::class, 'product_collection_id');
     }
-
 }
